@@ -1,0 +1,19 @@
+# SIEVE Profile: small (4-8 workers)
+# Conservative settings — smaller population, fewer ensemble slots,
+# longer training per individual to compensate for less parallelism.
+
+evolution:
+  population_size: 16
+  ensemble_size: 4
+  elite_fraction: 0.3           # keep more elites (smaller pool)
+  immigration_fraction: 0.05    # less immigration — protect convergence
+  mutation_strength: 0.15       # gentler mutations
+  max_generations: 100
+  stagnation_patience: 15
+  eval_combinations: 2000
+
+training:
+  epochs: 80                    # longer training per individual
+
+ensemble:
+  eval_batch_size: 64

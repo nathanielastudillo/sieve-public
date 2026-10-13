@@ -1,0 +1,58 @@
+{
+  "final_loss": 0.030787768659781202,
+  "best_loss": 0.030787768659781202,
+  "checkpoint_paths": [
+    "runs/smoke_v003/checkpoints/step_013240_epoch_0005.pt",
+    "runs/smoke_v003/checkpoints/step_026480_epoch_0010.pt",
+    "runs/smoke_v003/checkpoints/step_039720_epoch_0015.pt",
+    "runs/smoke_v003/checkpoints/step_052960_epoch_0020.pt"
+  ],
+  "model_config": {
+    "n_layer": 4,
+    "n_head": 4,
+    "n_embd": 256,
+    "block_size": 256,
+    "dropout": 0.1,
+    "bias": false,
+    "vocab_size": 16000
+  },
+  "train_config": {
+    "epochs": 20,
+    "batch_size": 32,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.3,
+    "warmup_fraction": 0.05,
+    "lr_schedule": "cosine",
+    "optimizer_name": "adamw",
+    "gradient_clip": 1.0,
+    "shuffle_per_epoch": true,
+    "seed": 42,
+    "device": "cuda",
+    "checkpoint_dir": "./runs/smoke_v003/checkpoints",
+    "checkpoint_every": 5
+  },
+  "wallclock_time": 1962.7642941789236,
+  "tokens_seen": 433848320,
+  "loss_history": [
+    4.856688090456577,
+    0.4562000145916222,
+    0.1412858712259016,
+    0.10376241902772934,
+    0.08614595724815599,
+    0.07542571463000333,
+    0.06799637581843579,
+    0.06224561892055943,
+    0.057252560621211895,
+    0.05311603127525742,
+    0.04922727916637306,
+    0.04575144231820259,
+    0.04265110494478907,
+    0.04001879354086325,
+    0.037513573568179255,
+    0.035535648622721704,
+    0.03377575445723272,
+    0.03239896982975777,
+    0.03136389877990428,
+    0.030787768659781202
+  ]
+}

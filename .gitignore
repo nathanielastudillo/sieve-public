@@ -1,0 +1,64 @@
+__pycache__/
+node_modules/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+*.pt
+*.bin
+*.npy
+checkpoints/
+results/
+corpus/
+*.log
+.DS_Store
+wandb/
+
+# Data pipeline artifacts (large binaries, tracked via manifests not git)
+data/raw/
+data/extracted/
+data/cleaned/
+data/corpus_v*/*.bin
+data/corpus_v*/sources.txt
+data/tokenizers/*/tokenizer.json
+
+# Run artifacts — checkpoints are huge, configs/results are kept
+runs/*/checkpoints/
+
+# ── Public-release safety (2026-10-13) ───────────────────────────────────────
+# Added before any visibility change. See sieve-audit/2026-10-13-public-readiness-audit.md.
+# Rationale: `git add -A` used to stage 538 MB / 660 files, including personal
+# documents, copyrighted full texts, and a credential. These rules close the gaps
+# that the earlier list left open.
+
+# Machine-local manifests classify personal documents (tax returns, ID, bank
+# statements, third-party invoices) and name the machine's own file layout.
+data/manifest_local.json
+data/manifest_*.json
+data/diff_*.json
+
+# Extracted / downloaded full texts. The *_vNNN variants were not covered by the
+# bare `data/cleaned/` rule, and the per-source dumps below carry personal text.
+data/cleaned_v*/
+data/extracted_textbooks/
+data/corpus_vfull/
+data/corpus_vbatch*/
+data/corpus_v*/sources.jsonl
+data/corpus_v*/sources.annotated.md
+data/pipeline/runs/
+
+# Corpus metadata names the download sources for each book. The corpus itself is
+# not redistributed (bins are ignored above); publishing the source list would
+# advertise the acquisition channel, so it stays local. Provenance for anything
+# reused is recorded in the release notes instead.
+data/corpus_v*/metadata.json
+
+data/sft_shards/
+
+# Local harness config and stray shell artifacts
+.claude/
+*$LOG
+
+# Internal audit reports are not public artifacts
+docs/public-readiness-audit-*.md

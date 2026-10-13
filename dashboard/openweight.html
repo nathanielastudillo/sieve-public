@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SIEVE — Openweight Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --fg: #e6e6e6; --fg-dim: #9aa; --bg: #0d1117; --card: #161b22;
+    --border: #30363d; --accent: #58a6ff; --ok: #3fb950; --err: #f85149;
+    --mono: "SF Mono", "Monaco", "Menlo", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, Segoe UI, sans-serif; font-size: 14px;
+  }
+  header { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 20px; align-items: center; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header nav { display: flex; gap: 14px; }
+  header nav a { color: var(--accent); text-decoration: none; }
+  main { padding: 20px; max-width: 1600px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase;
+             letter-spacing: 0.06em; color: var(--fg-dim); }
+  label { display: block; margin: 8px 0 4px; font-size: 12px; color: var(--fg-dim); }
+  input, select, textarea {
+    width: 100%; padding: 6px 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 4px; color: var(--fg);
+    font-family: var(--mono); font-size: 13px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chk-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chk-group label {
+    display: flex; align-items: center; gap: 4px; padding: 4px 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+    cursor: pointer; margin: 0; font-size: 12px; color: var(--fg);
+  }
+  .chk-group input[type="checkbox"] { width: auto; margin: 0; }
+  button {
+    padding: 8px 14px; background: var(--accent); color: #0d1117;
+    border: 0; border-radius: 4px; cursor: pointer; font-weight: 600;
+    font-size: 13px;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary { background: var(--card); color: var(--fg); border: 1px solid var(--border); font-weight: 400; }
+  button.danger { background: var(--err); color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  th { color: var(--fg-dim); font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+  tr:hover { background: rgba(255,255,255,0.03); cursor: pointer; }
+  tr.selected { background: rgba(88, 166, 255, 0.15); }
+  .status-running { color: var(--accent); }
+  .status-succeeded { color: var(--ok); }
+  .status-failed, .status-cancelled { color: var(--err); }
+  .pos { color: var(--ok); }
+  .neg { color: var(--err); }
+  pre.log {
+    font-family: var(--mono); font-size: 11px; line-height: 1.4;
+    background: #010409; border: 1px solid var(--border); border-radius: 4px;
+    padding: 10px; margin: 0; max-height: 360px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .hint { color: var(--fg-dim); font-size: 11px; margin-top: 4px; }
+  .flex { display: flex; gap: 8px; align-items: center; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .dot-running { background: var(--accent); animation: pulse 1s infinite; }
+  .dot-succeeded { background: var(--ok); }
+  .dot-failed, .dot-cancelled { background: var(--err); }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 12px; font-family: var(--mono); }
+  .kv .k { color: var(--fg-dim); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 6px 14px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--fg-dim); }
+  .tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>SIEVE Openweight Lab</h1>
+  <nav>
+    <a href="/">← Dashboard</a>
+    <a href="#" onclick="refreshAll(); return false;">⟳ Refresh</a>
+  </nav>
+  <span id="conn-status" style="margin-left: auto; font-size: 12px; color: var(--fg-dim);">disconnected</span>
+</header>
+
+<main>
+<div class="grid">
+
+  <!-- LEFT COLUMN — LAUNCH PANEL -->
+  <div>
+    <div class="card">
+      <h2>Launch experiment</h2>
+      <label>Kind</label>
+      <select id="f-kind">
+        <option value="baseline_bench">Baseline — bench a stock model</option>
+        <option value="sft">SFT — fine-tune a base model on a shard</option>
+        <option value="sft_bench">Post-SFT — bench a merged adapter</option>
+      </select>
+
+      <label>member_id (your name for this run)</label>
+      <input id="f-member-id" placeholder="e.g. baseline-qwen25-15b">
+
+      <label>base_model_id</label>
+      <input id="f-base-model" value="Qwen/Qwen2.5-1.5B-Instruct">
+
+      <div id="row-bench">
+        <label>benchmarks</label>
+        <div class="chk-group" id="f-benchmarks">
+          <label><input type="checkbox" value="smoke_mcq" checked> smoke_mcq</label>
+          <label><input type="checkbox" value="ifeval" checked> ifeval</label>
+          <label><input type="checkbox" value="hellaswag"> hellaswag</label>
+          <label><input type="checkbox" value="mmlu_pro"> mmlu_pro</label>
+          <label><input type="checkbox" value="gpqa_diamond"> gpqa_diamond</label>
+        </div>
+        <label class="flex" style="margin-top: 6px;">
+          <input type="checkbox" id="f-proxy" checked style="width: auto;">
+          <span>proxy (subset, faster)</span>
+        </label>
+      </div>
+
+      <div id="row-sft" style="display: none;">
+        <label>corpus_shard</label>
+        <input id="f-corpus" value="data/sft_shards/v009.jsonl">
+        <div class="row">
+          <div><label>epochs</label><input id="f-epochs" type="number" value="1" min="1"></div>
+          <div><label>rank</label><input id="f-rank" type="number" value="16" min="1"></div>
+          <div><label>batch_size</label><input id="f-bs" type="number" value="2" min="1"></div>
+          <div><label>max_seq_len</label><input id="f-msl" type="number" value="1024" min="128"></div>
+          <div><label>learning_rate</label><input id="f-lr" type="number" value="0.0001" step="0.00001"></div>
+          <div><label>out_dir</label><input id="f-outdir" placeholder="auto"></div>
+        </div>
+      </div>
+
+      <div id="row-sft-bench" style="display: none;">
+        <label>merged_checkpoint_path</label>
+        <input id="f-merged-ckpt" placeholder="runs/openweight_smoke/merged/...">
+        <label>adapter_path (optional)</label>
+        <input id="f-adapter">
+      </div>
+
+      <label>generation</label>
+      <input id="f-gen" type="number" value="0" min="0">
+
+      <label>parent_ids (comma-separated, optional)</label>
+      <input id="f-parents" placeholder="baseline-qwen25-15b">
+
+      <label>lineage_db</label>
+      <input id="f-lineage-db" value="runs/openweight_smoke/lineage.db">
+
+      <div style="margin-top: 14px;" class="flex">
+        <button onclick="submitLaunch()">▶ Launch</button>
+        <button class="secondary" onclick="document.getElementById('f-member-id').value = ''">Clear</button>
+      </div>
+      <div class="hint">Runs via <code>--launch-dispatch</code> wrapper if configured, otherwise local.</div>
+    </div>
+
+    <div class="card">
+      <h2>Live launches</h2>
+      <table id="launches-table">
+        <thead><tr><th>status</th><th>member_id</th><th>kind</th><th>started</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="launch-detail-card" style="display:none;">
+      <div class="flex-between">
+        <h2 style="margin:0;">Launch detail</h2>
+        <button class="secondary" onclick="hideLaunchDetail()">close</button>
+      </div>
+      <div id="launch-detail-kv" class="kv" style="margin-top: 10px;"></div>
+
+      <div class="flex-between" style="margin-top: 14px;">
+        <label style="margin: 0;">training metrics</label>
+        <span id="metrics-summary" class="hint" style="margin: 0;"></span>
+      </div>
+      <div style="position: relative; height: 220px; margin-top: 4px; background: #010409; border: 1px solid var(--border); border-radius: 4px; padding: 6px;">
+        <canvas id="loss-chart"></canvas>
+      </div>
+      <div class="flex" style="margin-top: 6px; font-size: 11px; color: var(--fg-dim);">
+        <label style="margin: 0;"><input type="radio" name="x-axis" value="step" checked style="width:auto;"> step</label>
+        <label style="margin: 0;"><input type="radio" name="x-axis" value="epoch" style="width:auto;"> epoch</label>
+        <span style="margin-left: auto;">
+          <label style="margin: 0;"><input type="checkbox" id="m-loss" checked style="width:auto;"> loss</label>
+          <label style="margin: 0;"><input type="checkbox" id="m-acc" style="width:auto;"> acc</label>
+          <label style="margin: 0;"><input type="checkbox" id="m-grad" style="width:auto;"> grad_norm</label>
+          <label style="margin: 0;"><input type="checkbox" id="m-lr" style="width:auto;"> lr</label>
+        </span>
+      </div>
+
+      <label style="margin-top: 12px;">log tail</label>
+      <pre class="log" id="launch-log">(loading)</pre>
+      <button class="secondary" onclick="cancelCurrentLaunch()" id="cancel-btn" style="display:none; margin-top: 8px;">cancel</button>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN — RESULTS -->
+  <div>
+    <div class="card">
+      <h2>Members × benches</h2>
+      <div class="hint" id="members-hint">click a row to view / compare</div>
+      <div style="overflow-x: auto; margin-top: 10px;">
+        <table id="members-table">
+          <thead><tr id="members-thead"></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="compare-card" style="display: none;">
+      <div class="flex-between">
+        <h2 style="margin:0;">Compare</h2>
+        <button class="secondary" onclick="clearCompare()">close</button>
+      </div>
+      <div class="kv" style="margin-top: 10px;">
+        <div class="k">A (baseline):</div><div id="cmp-a"></div>
+        <div class="k">B (candidate):</div><div id="cmp-b"></div>
+      </div>
+      <table style="margin-top: 12px;">
+        <thead><tr><th>benchmark</th><th>a</th><th>b</th><th>Δ</th><th>Δ%</th></tr></thead>
+        <tbody id="compare-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- FULL-WIDTH — PLAYGROUND (ensemble-vs-ensemble inference) -->
+<div class="card" id="playground-card">
+  <div class="flex-between">
+    <h2 style="margin:0;">Playground — ensemble-vs-ensemble <span class="hint" style="font-weight:normal;">build pg4</span></h2>
+    <span id="pg-hint" class="hint" style="margin:0;">pick any number of members per side. first call spins up each shim (~30s); subsequent calls are instant.</span>
+  </div>
+
+  <div id="pg-ensembles-info" style="margin-top: 10px;"></div>
+
+  <div class="row" style="margin-top: 12px;">
+    <div>
+      <label>A roster <span class="hint">(e.g. pre-SFT / baselines)</span></label>
+      <div id="pg-a-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+      <div class="flex" style="margin-top: 6px;">
+        <select id="pg-a-add" style="flex: 1;"></select>
+        <button class="secondary" onclick="pgAdd('a')">+ add</button>
+      </div>
+      <div class="hint" style="margin-top: 4px;">picking an ensemble auto-expands its voters</div>
+    </div>
+    <div>
+      <label>B roster <span class="hint">(e.g. post-SFT / candidates)</span></label>
+      <div id="pg-b-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+      <div class="flex" style="margin-top: 6px;">
+        <select id="pg-b-add" style="flex: 1;"></select>
+        <button class="secondary" onclick="pgAdd('b')">+ add</button>
+      </div>
+      <div class="hint" style="margin-top: 4px;">picking an ensemble auto-expands its voters</div>
+    </div>
+  </div>
+
+  <div class="flex" style="margin-top: 10px; gap: 18px; align-items: center; flex-wrap: wrap;">
+    <label style="margin:0;">mode:</label>
+    <label style="margin:0; font-weight: normal;">
+      <input type="radio" name="pg-mode" value="chat" checked onchange="pgSetMode()"> chat (applies template)
+    </label>
+    <label style="margin:0; font-weight: normal;">
+      <input type="radio" name="pg-mode" value="completion" onchange="pgSetMode()"> completion (raw next-token)
+    </label>
+    <span style="margin-left: 24px;">strategy:</span>
+    <label style="margin:0; font-weight: normal;">
+      <input type="radio" name="pg-strategy" value="majority" checked> majority
+    </label>
+    <label style="margin:0; font-weight: normal;">
+      <input type="radio" name="pg-strategy" value="weighted_majority"> weighted_majority (by bench score)
+    </label>
+  </div>
+
+  <div id="pg-system-wrap">
+    <label style="margin-top: 10px;">system prompt (optional)</label>
+    <textarea id="pg-system" placeholder="e.g. You are a precise assistant." rows="2"></textarea>
+  </div>
+
+  <label id="pg-user-label">user prompt</label>
+  <textarea id="pg-user" placeholder="ask both rosters something (MCQ-style questions get an aggregate letter vote)…" rows="4"></textarea>
+
+  <div class="row" style="margin-top: 6px;">
+    <div><label>max_tokens</label><input id="pg-max-tokens" type="number" value="256" min="8" max="4096"></div>
+    <div><label>temperature</label><input id="pg-temp" type="number" value="0.7" step="0.1" min="0" max="2"></div>
+  </div>
+
+  <div class="flex" style="margin-top: 12px;">
+    <button onclick="pgSend()" id="pg-send">▶ send to both rosters</button>
+    <button class="secondary" onclick="pgEnsureAll()" id="pg-ensure-all">⟲ pre-warm all shims</button>
+    <button class="secondary" onclick="pgClearResponses()">clear responses</button>
+    <span id="pg-err" class="neg" style="margin-left: auto; font-size: 12px;"></span>
+  </div>
+
+  <div class="row" style="margin-top: 14px;">
+    <div>
+      <div class="flex-between"><label style="margin:0;">A aggregate</label><span class="hint" id="pg-a-meta"></span></div>
+      <div id="pg-a-agg" class="hint" style="margin: 4px 0 8px; font-family: var(--mono); font-size: 12px;">—</div>
+      <div id="pg-a-out" style="display: flex; flex-direction: column; gap: 6px;"></div>
+    </div>
+    <div>
+      <div class="flex-between"><label style="margin:0;">B aggregate</label><span class="hint" id="pg-b-meta"></span></div>
+      <div id="pg-b-agg" class="hint" style="margin: 4px 0 8px; font-family: var(--mono); font-size: 12px;">—</div>
+      <div id="pg-b-out" style="display: flex; flex-direction: column; gap: 6px;"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const API = '';
+const $ = id => document.getElementById(id);
+
+let STATE = {
+  members: [],
+  launches: [],
+  selected: [],
+  activeLaunchId: null,
+  metrics: { launchId: null, points: [], maxStep: null },
+};
+
+let CHART = null;
+
+const SERIES_DEFS = [
+  { key: 'loss',      label: 'loss',      color: '#58a6ff', axis: 'y'  },
+  { key: 'mean_token_accuracy', label: 'acc', color: '#3fb950', axis: 'y2' },
+  { key: 'grad_norm', label: 'grad_norm', color: '#d29922', axis: 'y'  },
+  { key: 'learning_rate', label: 'lr',    color: '#a371f7', axis: 'y3' },
+];
+
+function ensureChart() {
+  if (CHART) return CHART;
+  const ctx = $('loss-chart').getContext('2d');
+  Chart.defaults.color = '#9aa';
+  Chart.defaults.borderColor = '#30363d';
+  CHART = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: SERIES_DEFS.map(s => ({
+      label: s.label, data: [], borderColor: s.color,
+      backgroundColor: s.color + '33', borderWidth: 1.2, pointRadius: 0,
+      tension: 0.15, yAxisID: s.axis, hidden: !['loss'].includes(s.key),
+    }))},
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false,
+      parsing: false, normalized: true,
+      interaction: { intersect: false, mode: 'index' },
+      scales: {
+        x: { type: 'linear', title: { display: false }, grid: { color: '#1a1f26' } },
+        y:  { position: 'left',  grid: { color: '#1a1f26' } },
+        y2: { position: 'right', grid: { display: false }, min: 0, max: 1, display: 'auto' },
+        y3: { display: false },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#0d1117', borderColor: '#30363d', borderWidth: 1 },
+      },
+    },
+  });
+  return CHART;
+}
+
+function chartXAxis() {
+  const r = document.querySelector('input[name="x-axis"]:checked');
+  return r ? r.value : 'step';
+}
+
+function applyVisibility() {
+  if (!CHART) return;
+  const vis = {
+    loss: $('m-loss').checked,
+    mean_token_accuracy: $('m-acc').checked,
+    grad_norm: $('m-grad').checked,
+    learning_rate: $('m-lr').checked,
+  };
+  SERIES_DEFS.forEach((s, i) => {
+    CHART.data.datasets[i].hidden = !vis[s.key];
+  });
+  CHART.update('none');
+}
+
+function rebuildChartData() {
+  if (!CHART) return;
+  const xKey = chartXAxis();
+  const points = STATE.metrics.points;
+  SERIES_DEFS.forEach((s, i) => {
+    CHART.data.datasets[i].data = points
+      .map(p => {
+        const x = xKey === 'epoch' ? p.metrics.epoch : p.step;
+        const y = p.metrics[s.key];
+        return (x === undefined || y === undefined || y === null) ? null : { x, y };
+      })
+      .filter(Boolean);
+  });
+  CHART.update('none');
+}
+
+async function refreshLaunchMetrics() {
+  if (!STATE.activeLaunchId) return;
+  const lid = STATE.activeLaunchId;
+  // Reset when the active launch changes.
+  if (STATE.metrics.launchId !== lid) {
+    STATE.metrics = { launchId: lid, points: [], maxStep: null };
+  }
+  let url = `/api/openweight/launch/${lid}/metrics`;
+  if (STATE.metrics.maxStep !== null) url += `?since=${STATE.metrics.maxStep}`;
+  try {
+    const res = await j(url);
+    if (!res.points || res.points.length === 0) {
+      rebuildChartData();
+      return;
+    }
+    STATE.metrics.points.push(...res.points);
+    if (res.max_step !== null && res.max_step !== undefined) STATE.metrics.maxStep = res.max_step;
+    ensureChart();
+    rebuildChartData();
+    const last = STATE.metrics.points[STATE.metrics.points.length - 1];
+    const summary = last ? `n=${STATE.metrics.points.length}  last: step=${last.step}  loss=${fmt(last.metrics.loss)}  epoch=${fmt(last.metrics.epoch, 4)}` : '';
+    $('metrics-summary').textContent = summary;
+  } catch (e) { /* ignore */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[name="x-axis"]').forEach(r => r.addEventListener('change', rebuildChartData));
+  for (const id of ['m-loss','m-acc','m-grad','m-lr']) {
+    $(id).addEventListener('change', applyVisibility);
+  }
+});
+
+async function j(url, opts) {
+  try {
+    const r = await fetch(API + url, opts);
+    if (!r.ok) {
+      // FastAPI HTTPExceptions return {"detail": "..."} — surface that
+      // cleanly so users see the server-side reason (e.g., 503 "no free
+      // node: ...") instead of a JSON blob.
+      let body = await r.text();
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed && parsed.detail) body = typeof parsed.detail === 'string'
+          ? parsed.detail
+          : JSON.stringify(parsed.detail);
+      } catch (_) { /* not JSON; use raw text */ }
+      throw new Error(`${r.status} ${body}`);
+    }
+    return await r.json();
+  } catch (e) {
+    $('conn-status').textContent = 'error: ' + e.message;
+    $('conn-status').style.color = 'var(--err)';
+    throw e;
+  }
+}
+
+function fmt(v, digits=3) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'number') return v.toFixed(digits);
+  return String(v);
+}
+
+function fmtTs(t) {
+  if (!t) return '—';
+  return new Date(t * 1000).toLocaleTimeString();
+}
+
+function onKindChange() {
+  const k = $('f-kind').value;
+  $('row-bench').style.display = (k === 'baseline_bench' || k === 'sft_bench') ? '' : 'none';
+  $('row-sft').style.display = (k === 'sft') ? '' : 'none';
+  $('row-sft-bench').style.display = (k === 'sft_bench') ? '' : 'none';
+}
+$('f-kind').addEventListener('change', onKindChange);
+
+function getChecked(containerId) {
+  return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)]
+    .map(cb => cb.value);
+}
+
+async function submitLaunch() {
+  const kind = $('f-kind').value;
+  const member_id = $('f-member-id').value.trim();
+  if (!member_id) { alert('member_id required'); return; }
+
+  const parents = $('f-parents').value.trim();
+  const parent_ids = parents ? parents.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  let spec = {
+    kind, member_id,
+    base_model_id: $('f-base-model').value.trim(),
+    generation: parseInt($('f-gen').value, 10),
+    parent_ids,
+    lineage_db: $('f-lineage-db').value.trim(),
+    tokenizer_family: 'qwen25',
+  };
+  if (kind === 'baseline_bench' || kind === 'sft_bench') {
+    spec.benchmarks = getChecked('f-benchmarks');
+    spec.proxy = $('f-proxy').checked;
+  }
+  if (kind === 'sft') {
+    spec.corpus_shard = $('f-corpus').value.trim();
+    spec.epochs = parseInt($('f-epochs').value, 10);
+    spec.rank = parseInt($('f-rank').value, 10);
+    spec.batch_size = parseInt($('f-bs').value, 10);
+    spec.max_seq_len = parseInt($('f-msl').value, 10);
+    spec.learning_rate = parseFloat($('f-lr').value);
+    const outdir = $('f-outdir').value.trim();
+    if (outdir) spec.out_dir = outdir;
+  }
+  if (kind === 'sft_bench') {
+    const m = $('f-merged-ckpt').value.trim();
+    if (m) spec.merged_checkpoint_path = m;
+    const a = $('f-adapter').value.trim();
+    if (a) spec.adapter_path = a;
+  }
+
+  try {
+    const res = await j('/api/openweight/launch', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(spec),
+    });
+    showLaunchDetail(res.launch_id);
+    refreshLaunches();
+  } catch (e) {
+    alert('launch failed: ' + e.message);
+  }
+}
+
+async function refreshLaunches() {
+  const launches = await j('/api/openweight/launches?limit=50');
+  STATE.launches = launches;
+  const tb = $('launches-table').querySelector('tbody');
+  tb.innerHTML = '';
+  for (const l of launches) {
+    const tr = document.createElement('tr');
+    if (l.id === STATE.activeLaunchId) tr.classList.add('selected');
+    tr.onclick = () => showLaunchDetail(l.id);
+    tr.innerHTML = `
+      <td><span class="dot dot-${l.status}"></span><span class="status-${l.status}">${l.status}</span></td>
+      <td>${l.member_id || '—'}</td>
+      <td>${l.kind}</td>
+      <td>${fmtTs(l.started_at)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+async function showLaunchDetail(launchId) {
+  STATE.activeLaunchId = launchId;
+  $('launch-detail-card').style.display = '';
+  refreshLaunches();
+  await refreshLaunchDetail();
+}
+
+async function refreshLaunchDetail() {
+  if (!STATE.activeLaunchId) return;
+  try {
+    const l = await j(`/api/openweight/launch/${STATE.activeLaunchId}`);
+    const kv = $('launch-detail-kv');
+    kv.innerHTML = `
+      <div class="k">id:</div><div>${l.id}</div>
+      <div class="k">kind:</div><div>${l.kind}</div>
+      <div class="k">member_id:</div><div>${l.member_id || '—'}</div>
+      <div class="k">status:</div><div><span class="status-${l.status}">${l.status}</span> (exit ${l.exit_code ?? '—'})</div>
+      <div class="k">started:</div><div>${fmtTs(l.started_at)}</div>
+      <div class="k">finished:</div><div>${fmtTs(l.finished_at)}</div>
+      <div class="k">log_path:</div><div>${l.log_path}</div>
+    `;
+    $('cancel-btn').style.display = (l.status === 'running') ? '' : 'none';
+    const logText = await (await fetch(`${API}/api/openweight/launch/${STATE.activeLaunchId}/log?tail=400`)).text();
+    const logEl = $('launch-log');
+    const nearBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+    logEl.textContent = logText;
+    if (nearBottom) logEl.scrollTop = logEl.scrollHeight;
+  } catch (e) { /* ignore */ }
+}
+
+function hideLaunchDetail() {
+  STATE.activeLaunchId = null;
+  $('launch-detail-card').style.display = 'none';
+}
+
+async function cancelCurrentLaunch() {
+  if (!STATE.activeLaunchId) return;
+  try {
+    await j(`/api/openweight/launch/${STATE.activeLaunchId}/cancel`, {method: 'POST'});
+    refreshLaunches(); refreshLaunchDetail();
+  } catch (e) { alert('cancel failed: ' + e.message); }
+}
+
+async function refreshMembers() {
+  const members = await j('/api/openweight/members');
+  STATE.members = members;
+  const benchSet = new Set();
+  for (const m of members) for (const k of Object.keys(m.fitness_evals || {})) benchSet.add(k);
+  const benches = [...benchSet].sort();
+
+  const thead = $('members-thead');
+  thead.innerHTML = `<th></th><th>member_id</th><th>kind</th><th>gen</th>` +
+    benches.map(b => `<th>${b}</th>`).join('') +
+    `<th>base / adapter</th>`;
+
+  const tb = $('members-table').querySelector('tbody');
+  tb.innerHTML = '';
+  for (const m of members) {
+    const tr = document.createElement('tr');
+    const selected = STATE.selected.includes(m.id);
+    if (selected) tr.classList.add('selected');
+    tr.onclick = () => toggleSelect(m.id);
+    const benchCells = benches.map(b => {
+      const e = m.fitness_evals[b];
+      return `<td>${e ? fmt(e.score) : '—'}</td>`;
+    }).join('');
+    const ident = m.merged_checkpoint_path || m.adapter_path || m.base_model_id || '—';
+    const identShort = String(ident).length > 50 ? '…' + String(ident).slice(-48) : ident;
+    tr.innerHTML = `
+      <td>${selected ? '✓' : ''}</td>
+      <td>${m.id}</td>
+      <td>${m.kind || '—'}</td>
+      <td>${m.generation}</td>
+      ${benchCells}
+      <td title="${ident}">${identShort}</td>`;
+    tb.appendChild(tr);
+  }
+
+  if (STATE.selected.length === 2) refreshCompare();
+  else $('compare-card').style.display = 'none';
+}
+
+function toggleSelect(mid) {
+  const i = STATE.selected.indexOf(mid);
+  if (i >= 0) STATE.selected.splice(i, 1);
+  else {
+    if (STATE.selected.length >= 2) STATE.selected.shift();
+    STATE.selected.push(mid);
+  }
+  refreshMembers();
+}
+
+function clearCompare() {
+  STATE.selected = [];
+  $('compare-card').style.display = 'none';
+  refreshMembers();
+}
+
+async function refreshCompare() {
+  if (STATE.selected.length !== 2) return;
+  const [a, b] = STATE.selected;
+  const res = await j(`/api/openweight/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  $('compare-card').style.display = '';
+  $('cmp-a').textContent = res.a;
+  $('cmp-b').textContent = res.b;
+  const tb = $('compare-tbody');
+  tb.innerHTML = '';
+  for (const r of res.benches) {
+    const sign = r.delta === null ? '' : (r.delta > 0 ? 'pos' : (r.delta < 0 ? 'neg' : ''));
+    tb.innerHTML += `<tr>
+      <td>${r.benchmark}</td>
+      <td>${fmt(r.a_score)}</td>
+      <td>${fmt(r.b_score)}</td>
+      <td class="${sign}">${r.delta === null ? '—' : (r.delta > 0 ? '+' : '') + fmt(r.delta)}</td>
+      <td class="${sign}">${r.rel_delta === null ? '—' : (r.rel_delta > 0 ? '+' : '') + fmt(r.rel_delta * 100, 1) + '%'}</td>
+    </tr>`;
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([refreshMembers(), refreshLaunches()]);
+  if (STATE.activeLaunchId) {
+    await refreshLaunchDetail();
+    await refreshLaunchMetrics();
+  }
+  $('conn-status').textContent = 'connected';
+  $('conn-status').style.color = 'var(--ok)';
+}
+
+refreshAll();
+setInterval(refreshAll, 5000);
+onKindChange();
+
+// ---------------------------------------------------------------------------
+// Playground — side-by-side inference
+// ---------------------------------------------------------------------------
+
+const PG = {
+  shims: {},           // member_id → latest status snapshot
+  cards: {},           // member_id → model-context card
+  roster: { a: [], b: [] },  // ordered member_ids per side
+};
+
+function pgCurrentMode() {
+  const el = document.querySelector('input[name="pg-mode"]:checked');
+  return el ? el.value : 'chat';
+}
+
+function pgStrategy() {
+  const el = document.querySelector('input[name="pg-strategy"]:checked');
+  return el ? el.value : 'majority';
+}
+
+function pgSetMode() {
+  const mode = pgCurrentMode();
+  $('pg-system-wrap').style.display = mode === 'chat' ? '' : 'none';
+  $('pg-user-label').textContent = mode === 'chat' ? 'user prompt' : 'raw prompt (no chat template)';
+  $('pg-user').placeholder = mode === 'chat'
+    ? 'ask both rosters something (MCQ-style questions get an aggregate letter vote)…'
+    : 'e.g. "The capital of France is" — let the models complete the text';
+}
+
+async function pgRefreshCard(memberId) {
+  if (!memberId || PG.cards[memberId]) return;
+  try {
+    const c = await j(`/api/openweight/playground/card/${encodeURIComponent(memberId)}`);
+    PG.cards[memberId] = c;
+  } catch (e) { /* ignore */ }
+}
+
+function pgMemberIsServeable(m) {
+  return (m.kind === 'base' && m.base_model_id) ||
+         ((m.kind === 'merge' || m.kind === 'lora_merge') && m.merged_checkpoint_path) ||
+         (m.kind === 'sft' && m.base_model_id && m.adapter_path);
+}
+
+// "Qwen/Qwen3-14B" -> "Qwen3-14B"; last path segment minus any "-Instruct"/"-Chat".
+function pgShortModel(base_model_id) {
+  if (!base_model_id) return '';
+  const tail = String(base_model_id).split('/').pop() || '';
+  return tail.replace(/-(Instruct|Chat|IT|it)\b/g, '');
+}
+
+function pgMemberLabel(mid) {
+  const m = STATE.members.find(x => x.id === mid);
+  if (!m) return mid;
+  const shortBase = pgShortModel(m.base_model_id);
+  const suffix = shortBase ? ` · ${shortBase}` : '';
+  return `${mid} · ${m.kind || '?'}${suffix}`;
+}
+
+function pgRenderEnsemblesInfo() {
+  const el = $('pg-ensembles-info');
+  if (!el) return;
+  const esc = s => String(s ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  const ensembles = STATE.members.filter(m => m.kind === 'ensemble' &&
+    Array.isArray(m.parent_ids) && m.parent_ids.length > 0);
+  if (ensembles.length === 0) { el.innerHTML = ''; return; }
+  const rows = ensembles.map(en => {
+    const voters = en.parent_ids.map(pid => {
+      const m = STATE.members.find(x => x.id === pid);
+      if (!m) return `<span class="hint" style="color:var(--err);">${esc(pid)} (missing)</span>`;
+      const short = pgShortModel(m.base_model_id);
+      const serveable = pgMemberIsServeable(m);
+      const color = serveable ? 'var(--ok)' : 'var(--err)';
+      return `<span title="${esc(pid)} · ${esc(m.kind)}" style="padding:2px 6px; background:var(--bg); border:1px solid var(--border); border-radius:3px; font-size:11px; color:${color};">${esc(short || pid.slice(0, 12))}</span>`;
+    }).join(' ');
+    return `
+      <div style="padding:8px 10px; background:var(--bg); border:1px solid var(--border); border-radius:4px; margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <b style="font-family:var(--mono); font-size:12px;">${esc(en.id)}</b>
+          <span class="hint" style="font-size:11px;">${en.parent_ids.length} voters</span>
+          <button class="secondary" onclick="pgLoadEnsemble('${esc(en.id)}','a')" style="padding:3px 8px; font-size:11px;">load to A</button>
+          <button class="secondary" onclick="pgLoadEnsemble('${esc(en.id)}','b')" style="padding:3px 8px; font-size:11px;">load to B</button>
+        </div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; font-family:var(--mono);">${voters}</div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `<label>Available ensembles <span class="hint">(click "load to A/B" or pick from the dropdowns below)</span></label>${rows}`;
+}
+
+function pgLoadEnsemble(ensembleId, side) {
+  const en = STATE.members.find(m => m.id === ensembleId);
+  if (!en) return;
+  const children = Array.isArray(en.parent_ids) ? en.parent_ids : [];
+  if (children.length === 0) { $('pg-err').textContent = `${ensembleId} has no voters`; return; }
+  // Replace the roster (don't merge) — user explicitly wants THIS ensemble's composition.
+  PG.roster[side] = [];
+  let added = 0, skipped = 0;
+  for (const cid of children) {
+    const c = STATE.members.find(x => x.id === cid);
+    if (!c || !pgMemberIsServeable(c)) { skipped++; continue; }
+    PG.roster[side].push(cid);
+    pgRefreshCard(cid);
+    added++;
+  }
+  $('pg-err').textContent = skipped
+    ? `loaded ${added}/${children.length} from ${ensembleId} (${skipped} unserveable)`
+    : `loaded ${added}/${children.length} from ${ensembleId}`;
+  pgRenderRoster(side);
+  pgRenderStatus();
+}
+
+function pgAdd(side) {
+  const sel = $('pg-' + side + '-add');
+  const mid = sel.value;
+  if (!mid) return;
+  const member = STATE.members.find(m => m.id === mid);
+  if (member && member.kind === 'ensemble') {
+    // Ensembles are pseudo-members — expand their parent_ids into the roster.
+    const children = Array.isArray(member.parent_ids) ? member.parent_ids : [];
+    if (children.length === 0) { $('pg-err').textContent = `${mid} has no parent_ids`; return; }
+    let added = 0;
+    for (const cid of children) {
+      if (PG.roster[side].includes(cid)) continue;
+      const c = STATE.members.find(m => m.id === cid);
+      if (!c || !pgMemberIsServeable(c)) continue;
+      PG.roster[side].push(cid);
+      pgRefreshCard(cid);
+      added++;
+    }
+    $('pg-err').textContent = added
+      ? `expanded ${mid} → added ${added} of ${children.length} members`
+      : `no new serveable members added from ${mid}`;
+    sel.value = '';
+    pgRenderRoster(side);
+    pgRenderStatus();
+    return;
+  }
+  if (PG.roster[side].includes(mid)) return;  // no duplicates per side
+  PG.roster[side].push(mid);
+  pgRefreshCard(mid);
+  pgRenderRoster(side);
+  pgRenderStatus();
+}
+
+function pgRemove(side, mid) {
+  PG.roster[side] = PG.roster[side].filter(x => x !== mid);
+  pgRenderRoster(side);
+  pgRenderStatus();
+}
+
+function pgRenderRoster(side) {
+  const list = $('pg-' + side + '-list');
+  const esc = s => String(s ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  if (PG.roster[side].length === 0) {
+    list.innerHTML = `<div class="hint" style="padding: 6px 0;">no members yet — use the dropdown below</div>`;
+    return;
+  }
+  list.innerHTML = PG.roster[side].map(mid => {
+    const s = PG.shims[mid] || { status: 'idle' };
+    let badge = s.status;
+    let color = 'var(--fg-dim)';
+    if (s.status === 'starting') {
+      const since = s.started_at ? Math.floor(Date.now()/1000 - s.started_at) : 0;
+      badge = `loading ${since}s`; color = 'var(--accent)';
+    } else if (s.status === 'ready') {
+      badge = `ready :${s.port}`; color = 'var(--ok)';
+    } else if (s.status === 'error') {
+      badge = 'error'; color = 'var(--err)';
+    }
+    const c = PG.cards[mid];
+    const hint = c ? `${esc(c.role)}${c.base_model_id ? ' · ' + esc(c.base_model_id) : ''}` : '';
+    return `
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px;">
+        <span style="flex:1; font-family:var(--mono); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          <span>${esc(pgMemberLabel(mid))}</span>
+          ${hint ? `<div class="hint" style="font-size:10px; margin-top:2px;">${hint}</div>` : ''}
+        </span>
+        <span class="hint" style="color:${color}; font-size:11px; min-width: 80px; text-align:right;" title="${esc(s.error || '')}">${badge}</span>
+        <button class="secondary" onclick="pgStopMember('${esc(mid)}')" style="font-size:11px; padding:2px 6px;" ${s.status === 'ready' || s.status === 'starting' ? '' : 'disabled'}>stop</button>
+        <button class="secondary" onclick="pgRemove('${side}', '${esc(mid)}')" style="font-size:11px; padding:2px 6px;">✕</button>
+      </div>`;
+  }).join('');
+}
+
+function pgRenderAddDropdowns() {
+  // Separate ensembles (pseudo-members; auto-expand on add) from real serveable members.
+  const ensembles = STATE.members.filter(m => m.kind === 'ensemble' &&
+    Array.isArray(m.parent_ids) && m.parent_ids.length > 0);
+  const serveable = STATE.members.filter(m => m.kind !== 'ensemble');
+
+  for (const side of ['a', 'b']) {
+    const sel = $('pg-' + side + '-add');
+    const prev = sel.value;
+    let html = '<option value="">— add a member or ensemble —</option>';
+    if (ensembles.length) {
+      html += '<optgroup label="Ensembles (auto-expand parents)">';
+      html += ensembles.map(m =>
+        `<option value="${m.id}">${m.id} · ${m.parent_ids.length} voters</option>`
+      ).join('');
+      html += '</optgroup>';
+    }
+    html += '<optgroup label="Individual members">';
+    html += serveable.map(m => {
+      const ok = pgMemberIsServeable(m);
+      const tag = ok ? '' : ' (unserveable)';
+      return `<option value="${m.id}" ${ok ? '' : 'disabled'}>${m.id} · ${m.kind}${tag}</option>`;
+    }).join('');
+    html += '</optgroup>';
+    sel.innerHTML = html;
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  }
+}
+
+function pgRenderDropdowns() {
+  pgRenderAddDropdowns();
+  pgRenderEnsemblesInfo();
+
+  // Auto-seed roster on first populate: A = first base; B = first merge/sft.
+  if (PG.roster.a.length === 0 && PG.roster.b.length === 0) {
+    const firstBase = STATE.members.find(m => m.kind === 'base' && m.base_model_id);
+    const firstFt = STATE.members.find(m =>
+      (m.kind === 'merge' && m.merged_checkpoint_path) ||
+      (m.kind === 'lora_merge' && m.merged_checkpoint_path) ||
+      (m.kind === 'sft' && m.base_model_id && m.adapter_path));
+    if (firstBase) { PG.roster.a.push(firstBase.id); pgRefreshCard(firstBase.id); }
+    if (firstFt)   { PG.roster.b.push(firstFt.id);  pgRefreshCard(firstFt.id); }
+  }
+  pgRenderRoster('a');
+  pgRenderRoster('b');
+}
+
+function pgRenderStatus() {
+  pgRenderRoster('a');
+  pgRenderRoster('b');
+  const all = [...PG.roster.a, ...PG.roster.b];
+  const readyCount = all.filter(mid => PG.shims[mid]?.status === 'ready').length;
+  const sendBtn = $('pg-send');
+  if (all.length === 0 || PG.roster.a.length === 0 || PG.roster.b.length === 0) {
+    sendBtn.textContent = '▶ send to both rosters';
+  } else if (readyCount === all.length) {
+    sendBtn.textContent = `▶ send to both rosters (${readyCount}/${all.length} ready)`;
+  } else {
+    sendBtn.textContent = `▶ send (will start ${all.length - readyCount} shim${all.length - readyCount === 1 ? '' : 's'})`;
+  }
+}
+
+async function pgRefreshStatus() {
+  try {
+    const res = await j('/api/openweight/playground/status');
+    PG.shims = {};
+    for (const s of res.shims) PG.shims[s.member_id] = s;
+    pgRenderStatus();
+  } catch (e) { /* ignore */ }
+}
+
+async function pgEnsure(memberId) {
+  if (!memberId) return;
+  await j(`/api/openweight/playground/ensure/${encodeURIComponent(memberId)}`, { method: 'POST' });
+}
+
+async function pgEnsureAll() {
+  const all = [...new Set([...PG.roster.a, ...PG.roster.b])];
+  if (all.length === 0) { $('pg-err').textContent = 'no members selected'; return; }
+  $('pg-err').textContent = `ensuring ${all.length} shim${all.length === 1 ? '' : 's'}…`;
+  try {
+    await Promise.all(all.map(mid => pgEnsure(mid)));
+    await pgRefreshStatus();
+    $('pg-err').textContent = '';
+  } catch (e) { $('pg-err').textContent = 'ensure failed: ' + e.message; }
+}
+
+async function pgStopMember(memberId) {
+  try {
+    await j(`/api/openweight/playground/stop/${encodeURIComponent(memberId)}`, { method: 'POST' });
+    delete PG.shims[memberId];
+    pgRenderStatus();
+  } catch (e) { $('pg-err').textContent = 'stop failed: ' + e.message; }
+}
+
+function pgClearResponses() {
+  $('pg-a-out').innerHTML = '';
+  $('pg-b-out').innerHTML = '';
+  $('pg-a-agg').textContent = '—';
+  $('pg-b-agg').textContent = '—';
+  $('pg-a-meta').textContent = '';
+  $('pg-b-meta').textContent = '';
+  $('pg-err').textContent = '';
+  $('pg-send').disabled = false;
+}
+
+async function pgFetchStatusSafe() {
+  try {
+    const res = await fetch(API + '/api/openweight/playground/status');
+    if (!res.ok) throw new Error(`${res.status}`);
+    return await res.json();
+  } catch (e) {
+    return { _error: e.message || String(e) };
+  }
+}
+
+// Pump: poll /status on a tight cadence, re-render each roster's loading rows
+// with live per-shim status + log tail, and survive transient fetch errors.
+// Resolves when every id in allIds is ready; rejects on any shim error or
+// after sustained network failure / wall-clock timeout.
+async function pgWaitAll(allIds, aIds, bIds, timeoutMs = 900_000) {
+  const deadline = Date.now() + timeoutMs;
+  const maxConsecFail = 30;        // ~60s at 2s backoff
+  let consecFail = 0;
+  while (Date.now() < deadline) {
+    const res = await pgFetchStatusSafe();
+    if (res._error) {
+      consecFail++;
+      $('pg-err').innerHTML = `<span style="color:var(--warn, #f59e0b);">reconnecting… (${consecFail}× fetch fail: ${String(res._error).replace(/[&<>]/g, '')})</span>`;
+      if (consecFail >= maxConsecFail) {
+        throw new Error(`lost connection to dashboard after ${consecFail} consecutive /status failures`);
+      }
+      await new Promise(r => setTimeout(r, 2000));
+      continue;
+    }
+    consecFail = 0;
+    const byId = {};
+    for (const s of res.shims || []) {
+      byId[s.member_id] = s;
+      PG.shims[s.member_id] = s;
+    }
+    // Re-render per-member loading rows with live status.
+    for (const side of ['a', 'b']) {
+      const ids = side === 'a' ? aIds : bIds;
+      const box = $('pg-' + side + '-out');
+      box.innerHTML = ids.map(mid => pgRenderLoadingRow(mid, byId[mid] || PG.shims[mid] || null)).join('');
+    }
+    pgRenderStatus();
+    // Errors are fatal for the send.
+    const errs = allIds.map(mid => byId[mid]).filter(s => s && s.status === 'error');
+    if (errs.length) {
+      throw new Error(errs.map(s => `${pgMemberLabel(s.member_id)}: ${s.error}`).join(' | '));
+    }
+    const readyCount = allIds.filter(mid => (byId[mid] || {}).status === 'ready').length;
+    const startingCount = allIds.filter(mid => (byId[mid] || {}).status === 'starting').length;
+    $('pg-err').innerHTML =
+      `<span class="hint">loading ${readyCount}/${allIds.length} ready` +
+      (startingCount ? ` · ${startingCount} warming up` : '') +
+      `</span>`;
+    if (readyCount === allIds.length) return;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  throw new Error(`timed out after ${Math.round(timeoutMs / 1000)}s waiting for shims`);
+}
+
+// Kept as a compat shim for the status pane's old single-member wait call
+// sites — now just proxies through pgWaitAll.
+async function pgWaitReady(memberId, timeoutMs = 900_000) {
+  await pgWaitAll([memberId], [memberId], [], timeoutMs);
+  return PG.shims[memberId];
+}
+
+async function pgSend() {
+  $('pg-err').textContent = 'sending…';
+  const aIds = PG.roster.a.slice();
+  const bIds = PG.roster.b.slice();
+  if (aIds.length === 0 || bIds.length === 0) {
+    $('pg-err').textContent = 'need at least one member on each side';
+    return;
+  }
+
+  const mode = pgCurrentMode();
+  const strategy = pgStrategy();
+  const user = $('pg-user').value.trim();
+  if (!user) { $('pg-err').textContent = 'prompt is empty'; return; }
+
+  const payload = {
+    a_members: aIds,
+    b_members: bIds,
+    mode, strategy,
+    max_tokens: parseInt($('pg-max-tokens').value, 10),
+    temperature: parseFloat($('pg-temp').value),
+  };
+  if (mode === 'chat') {
+    const system = $('pg-system').value.trim();
+    const messages = [];
+    if (system) messages.push({ role: 'system', content: system });
+    messages.push({ role: 'user', content: user });
+    payload.messages = messages;
+  } else {
+    payload.prompt = user;
+  }
+
+  $('pg-send').disabled = true;
+  $('pg-err').textContent = '';
+  const deadman = setTimeout(() => { $('pg-send').disabled = false; }, 1_200_000);
+
+  try {
+    const allIds = [...new Set([...aIds, ...bIds])];
+    // 1. Kick off any not-yet-started shims (resilient — collect failures, don't abort).
+    const toStart = allIds.filter(mid => {
+      const s = PG.shims[mid];
+      return !s || (s.status !== 'ready' && s.status !== 'starting');
+    });
+    if (toStart.length) {
+      $('pg-err').innerHTML = `<span class="hint">warming ${toStart.length} shim${toStart.length === 1 ? '' : 's'}…</span>`;
+      const ensures = await Promise.allSettled(toStart.map(async mid => {
+        // Up to 3 retries with exponential backoff for a bad network hiccup.
+        let lastErr;
+        for (let i = 0; i < 3; i++) {
+          try { return await pgEnsure(mid); }
+          catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 1000 * (i + 1))); }
+        }
+        throw lastErr;
+      }));
+      const hardFails = ensures
+        .map((r, i) => [r, toStart[i]])
+        .filter(([r]) => r.status === 'rejected');
+      if (hardFails.length === toStart.length) {
+        throw new Error(`could not start any shim (last error: ${hardFails[0][0].reason?.message || hardFails[0][0].reason})`);
+      }
+      if (hardFails.length) {
+        console.warn('[pg] some ensures failed', hardFails);
+      }
+    }
+
+    // 2. Initial render — loading rows with whatever status we have.
+    for (const side of ['a', 'b']) {
+      const ids = side === 'a' ? aIds : bIds;
+      const box = $('pg-' + side + '-out');
+      box.innerHTML = ids.map(mid => pgRenderLoadingRow(mid, PG.shims[mid] || null)).join('');
+    }
+
+    // 3. Pump status until all ready (survives transient fetch errors).
+    await pgWaitAll(allIds, aIds, bIds);
+
+    // 4. Fire the single ensemble call — rows flip to "sending…".
+    $('pg-err').innerHTML = `<span class="hint">all ${allIds.length} shims ready · generating…</span>`;
+    for (const side of ['a', 'b']) {
+      const ids = side === 'a' ? aIds : bIds;
+      const box = $('pg-' + side + '-out');
+      box.innerHTML = ids.map(mid =>
+        pgRenderMemberRow(mid, { content: '(sending…)' }, true)
+      ).join('');
+    }
+
+    const res = await j('/api/openweight/playground/ensemble', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    pgRenderSide('a', res.a);
+    pgRenderSide('b', res.b);
+
+    const aElapsed = (res.a.members || []).map(m => m.elapsed_s || 0);
+    const bElapsed = (res.b.members || []).map(m => m.elapsed_s || 0);
+    $('pg-a-meta').textContent = `n=${aIds.length}, max=${Math.max(...aElapsed, 0).toFixed(1)}s`;
+    $('pg-b-meta').textContent = `n=${bIds.length}, max=${Math.max(...bElapsed, 0).toFixed(1)}s`;
+  } catch (e) {
+    console.error('[pg] pgSend error', e);
+    $('pg-err').textContent = 'send failed: ' + e.message;
+  } finally {
+    clearTimeout(deadman);
+    $('pg-send').disabled = false;
+    pgRenderStatus();
+  }
+}
+
+function pgRenderSide(side, payload) {
+  const agg = payload.aggregate || {};
+  const aggEl = $('pg-' + side + '-agg');
+  const esc = s => String(s ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  if (agg.letter) {
+    const votesParts = Object.entries(agg.votes || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k}=${v}`).join(' · ');
+    aggEl.innerHTML = `<b style="color:var(--accent); font-size:18px;">${esc(agg.letter)}</b> ` +
+      `<span class="hint">(${esc(agg.strategy)} · ${esc(votesParts)})</span>`;
+  } else {
+    aggEl.innerHTML = `<span class="hint">no MCQ letter extracted — freeform outputs below</span>`;
+  }
+  const box = $('pg-' + side + '-out');
+  box.innerHTML = (payload.members || []).map(m => pgRenderMemberRow(m.member_id, m, false)).join('');
+}
+
+function pgRenderLoadingRow(mid, s) {
+  const esc = x => String(x ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  const label = esc(pgMemberLabel(mid));
+  const status = (s && s.status) || 'idle';
+  const elapsed = s && typeof s.elapsed_s === 'number' ? `${s.elapsed_s.toFixed(0)}s` : '';
+  const badge = {
+    ready:    '<span style="color:var(--accent);">●</span>',
+    starting: '<span style="color:#f59e0b;">◐</span>',
+    error:    '<span style="color:var(--err);">⚠</span>',
+    idle:     '<span style="color:var(--fg-dim);">○</span>',
+    stopped:  '<span style="color:var(--fg-dim);">○</span>',
+  }[status] || '<span style="color:var(--fg-dim);">·</span>';
+  const stateLabel = {
+    ready:    'ready',
+    starting: 'loading model',
+    error:    'error',
+    idle:     'queued',
+  }[status] || status;
+  const borderColor = status === 'error' ? 'var(--err)' : (status === 'ready' ? 'var(--accent)' : 'var(--border)');
+  const errBlock = (s && s.error)
+    ? `<div class="hint" style="color:var(--err); margin-top:4px; white-space:pre-wrap;">${esc(s.error)}</div>`
+    : '';
+  const tail = (s && Array.isArray(s.log_tail)) ? s.log_tail.slice(-3) : [];
+  const tailBlock = tail.length
+    ? `<pre class="log" style="margin-top:4px; max-height:60px; opacity:0.55; font-size:10px; overflow:hidden;">${esc(tail.join('\n'))}</pre>`
+    : (status === 'starting'
+        ? `<div class="hint" style="margin-top:4px; opacity:0.6;">(waiting for log output…)</div>`
+        : '');
+  const port = s && s.port ? `:${s.port}` : '';
+  const node = s && s.node ? `@${s.node}` : '';
+  const freeGb = (s && typeof s.free_gb_at_pick === 'number') ? ` (${s.free_gb_at_pick.toFixed(0)}G free)` : '';
+  return `<div style="padding:6px 8px; background:#010409; border:1px solid ${borderColor}; border-radius:4px;">
+    <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;">
+      <span style="font-family:var(--mono); font-size:11px; color:var(--fg-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+        ${badge} ${label}${node ? ' <span style="color:var(--accent); opacity:0.85;">' + esc(node) + '</span>' : ''}
+      </span>
+      <span class="hint" style="font-size:10px;">${esc(stateLabel)}${freeGb ? esc(freeGb) : ''}${port ? ' ' + esc(port) : ''}${elapsed ? ' · ' + esc(elapsed) : ''}</span>
+    </div>
+    ${errBlock}
+    ${tailBlock}
+  </div>`;
+}
+
+function pgRenderMemberRow(mid, r, isPlaceholder) {
+  const esc = s => String(s ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  const label = esc(pgMemberLabel(mid));
+  if (r.error) {
+    return `<div style="padding:6px 8px; background:#010409; border:1px solid var(--err); border-radius:4px;">
+      <div style="font-family:var(--mono); font-size:11px; color:var(--err);">${label}</div>
+      <div class="hint" style="color:var(--err); margin-top:4px; white-space:pre-wrap; word-break:break-word;">⚠ ${esc(r.error)}</div>
+    </div>`;
+  }
+  const u = r.usage || {};
+  const toks = u.completion_tokens ? `${u.completion_tokens} tok` : '';
+  const rate = (u.completion_tokens && r.elapsed_s) ? ` · ${(u.completion_tokens / r.elapsed_s).toFixed(1)} tok/s` : '';
+  const letter = r.answer_letter
+    ? `<span style="color:var(--accent); font-weight:600;">→ ${esc(r.answer_letter)}</span>`
+    : '';
+  const weight = (typeof r.weight === 'number' && r.weight !== 1.0)
+    ? ` · w=${r.weight.toFixed(2)}`
+    : '';
+  const meta = [
+    r.elapsed_s ? `${r.elapsed_s.toFixed(1)}s` : '',
+    toks, rate, r.finish_reason || '', weight,
+  ].filter(Boolean).join(' · ');
+  const content = r.content === undefined ? '' : String(r.content);
+  return `<div style="padding:6px 8px; background:#010409; border:1px solid var(--border); border-radius:4px;">
+    <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;">
+      <span style="font-family:var(--mono); font-size:11px; color:var(--fg-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${label} ${letter}</span>
+      <span class="hint" style="font-size:10px;">${esc(meta)}</span>
+    </div>
+    <pre class="log" style="margin-top:4px; max-height: 260px;${isPlaceholder ? ' opacity:0.5;' : ''}">${esc(content) || '(empty)'}</pre>
+  </div>`;
+}
+
+// Dropdowns repopulate whenever members refresh. Hook into refreshAll.
+const _originalRefreshMembers = refreshMembers;
+refreshMembers = async function () {
+  await _originalRefreshMembers();
+  pgRenderDropdowns();
+  pgRenderStatus();
+};
+
+// Poll playground status only while any shim is loading. Once all ready,
+// we stop polling to avoid stealing event-loop cycles from the chat path.
+setInterval(() => {
+  const anyStarting = Object.values(PG.shims).some(s => s.status === 'starting');
+  if (anyStarting) pgRefreshStatus();
+}, 3000);
+
+// Keep the 'loading Ns' counter ticking without network calls.
+setInterval(pgRenderStatus, 2000);
+</script>
+</body>
+</html>

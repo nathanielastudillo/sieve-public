@@ -1,0 +1,19 @@
+# SIEVE Profile: full (32-64 workers)
+# Brute-force settings — maximum population, widest exploration,
+# short individual training to maximize generational throughput.
+
+evolution:
+  population_size: 128
+  ensemble_size: 16
+  elite_fraction: 0.15          # aggressive culling
+  immigration_fraction: 0.2     # high immigration — maximize diversity
+  mutation_strength: 0.3        # strong mutations — explore widely
+  max_generations: 500
+  stagnation_patience: 30
+  eval_combinations: 20000
+
+training:
+  epochs: 20                    # short — brute-force many configs fast
+
+ensemble:
+  eval_batch_size: 512

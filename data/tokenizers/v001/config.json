@@ -1,0 +1,18 @@
+{
+  "version": "v001",
+  "vocab_size": 8000,
+  "actual_vocab_size": 8000,
+  "min_frequency": 2,
+  "lowercase": true,
+  "strip_accents": false,
+  "special_tokens": [
+    "<pad>",
+    "<bos>",
+    "<eos>",
+    "<unk>"
+  ],
+  "normalizer": "NFKC+lowercase",
+  "pre_tokenizer": "byte_level",
+  "num_train_files": 18,
+  "train_time_seconds": 0.94
+}

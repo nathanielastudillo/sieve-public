@@ -1,0 +1,29 @@
+{
+  "compression_ratio": 4.915,
+  "fertility": 1.482,
+  "domain_integrity_pct": 75.7,
+  "single_token_terms": 53,
+  "total_domain_terms": 70,
+  "vocab_utilization_pct": 97.1,
+  "corpus_tokens": 3405352,
+  "corpus_bytes": 16737188,
+  "corpus_words": 2297451,
+  "term_subtokens": {
+    "countertransference": 2,
+    "eigenvalue": 3,
+    "eigenvector": 5,
+    "electromagnetic": 5,
+    "entanglement": 2,
+    "hamiltonian": 2,
+    "hermeneutics": 2,
+    "introjection": 2,
+    "lagrangian": 3,
+    "macrosociology": 2,
+    "mentalization": 2,
+    "microsociology": 2,
+    "photon": 2,
+    "renormalization": 4,
+    "schrodinger": 4,
+    "wavefunction": 2
+  }
+}

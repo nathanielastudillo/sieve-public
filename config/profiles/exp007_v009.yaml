@@ -1,0 +1,76 @@
+# SIEVE Profile: exp007 — v009 corpus, shrunk models, smoothed aggregator
+#
+# Experimental, not load-bearing. Tests whether the combination of:
+#   (a) corpus_v009 at 4.3M train tokens (~63× the 80K regime)
+#   (b) shrunk model floor (n_embd ∈ {128, 192, 256}, n_layer ∈ {2, 3, 4})
+#   (c) ε-smoothed aggregator (defaults: α=0.05)
+#   (d) aggressive regularization (WD up to 8.0, dropout up to 0.4)
+# produces members that generalize rather than memorize.
+#
+# Success criterion: best individual val_loss < log(V)=8.987 AND best ensemble
+# val_loss < best individual val_loss (ensemble actually adds signal).
+#
+# If ensemble CE still floats near log(V), the next lever is distillation
+# (BabyLlama-2 style) — see docs/ensemble_lit_review.md §2.
+
+model:
+  # These are fallback defaults; evolutionary search_space overrides per-member.
+  n_layer: 3
+  n_head: 4
+  n_embd: 192
+  block_size: 256
+  dropout: 0.2
+  bias: false
+  vocab_size: 8000   # matches tokenizer v005
+
+training:
+  epochs: 6
+  batch_size: 32
+  learning_rate: 3e-4
+  weight_decay: 1.0
+  warmup_fraction: 0.05
+  lr_schedule: cosine
+  optimizer: adamw
+  gradient_clip: 1.0
+  shuffle_per_epoch: true
+
+evolution:
+  population_size: 8
+  ensemble_size: 4
+  elite_fraction: 0.25
+  immigration_fraction: 0.125
+  mutation_strength: 0.2
+  max_generations: 5
+  stagnation_patience: 3
+  eval_combinations: 70    # C(8,4) = 70 — brute-force all
+
+ensemble:
+  eval_batch_size: 32
+  aggregator: logit_mean_smoothed
+  smoothing_eps: 0.05
+
+# Paths point at v009
+paths:
+  corpus_dir: ./data/corpus_v009
+  checkpoint_dir: ./checkpoints/exp007
+  results_dir: ./results/exp007
+  lineage_db: ./results/exp007/lineage.db
+
+# Search space: allow three small architecture sizes + aggressive regularization.
+# At vocab=8000, block_size=256:
+#   (n_layer=2, n_embd=128, n_head=4) ≈ 1.4M params → ~3 tokens/param
+#   (n_layer=3, n_embd=192, n_head=4) ≈ 2.3M params → ~2 tokens/param
+#   (n_layer=4, n_embd=256, n_head=4) ≈ 4.1M params → ~1 tokens/param
+# All three remain below BabyLM density but at the new corpus size they're
+# orders of magnitude better than v008's 0.015 tokens/param regime.
+search_space:
+  n_layer: [2, 3, 4]
+  n_head: [4]
+  n_embd: [128, 192, 256]
+  dropout: [0.1, 0.4]              # continuous
+  weight_decay: [0.3, 8.0]         # continuous — slowrun finding: WD up to 16× std
+  learning_rate: [1e-4, 3e-3]      # continuous log-uniform
+  optimizer: [adamw]
+  epochs: [4, 5, 6, 8]             # discrete — short schedules to watch memorization onset
+  warmup_fraction: [0.02, 0.1]
+  lr_schedule: [cosine, linear]

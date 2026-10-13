@@ -1,0 +1,29 @@
+{
+  "ensemble_val_loss": 10.986971027142292,
+  "ensemble_perplexity": 59099.09375,
+  "individual_losses": [
+    {
+      "checkpoint": "runs/smoke_v003/checkpoints/step_013240_epoch_0005.pt",
+      "val_loss": 13.473358122078148,
+      "perplexity": 710239.9375
+    },
+    {
+      "checkpoint": "runs/smoke_v003/checkpoints/step_026480_epoch_0010.pt",
+      "val_loss": 11.923480871561411,
+      "perplexity": 150765.5
+    },
+    {
+      "checkpoint": "runs/smoke_v003/checkpoints/step_039720_epoch_0015.pt",
+      "val_loss": 10.977900648439253,
+      "perplexity": 58565.46875
+    },
+    {
+      "checkpoint": "runs/smoke_v003/checkpoints/step_052960_epoch_0020.pt",
+      "val_loss": 10.825411832010424,
+      "perplexity": 50282.46875
+    }
+  ],
+  "diversity_score": 2.247963989394725,
+  "n_members": 4,
+  "total_tokens": 2424832
+}

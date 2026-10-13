@@ -1,0 +1,82 @@
+# SIEVE — Default Training Configuration
+# Evolutionary ensemble trainer for small transformers on GB10 clusters.
+# Override with profile-specific configs in config/profiles/.
+
+# Model defaults
+model:
+  n_layer: 6
+  n_head: 6
+  n_embd: 384
+  block_size: 512
+  dropout: 0.1
+  bias: false
+  vocab_size: 50257
+
+# Training defaults
+training:
+  epochs: 50
+  batch_size: 64
+  learning_rate: 3e-4
+  weight_decay: 0.3
+  warmup_fraction: 0.05
+  lr_schedule: cosine
+  optimizer: muon
+  gradient_clip: 1.0
+  shuffle_per_epoch: true
+
+# Evolution defaults
+evolution:
+  population_size: 32
+  ensemble_size: 8
+  elite_fraction: 0.25
+  # Immigration = fresh random-init members injected each generation.
+  # Fort, Hu & Lakshminarayanan 2019 (arxiv.org/abs/1912.02757) — random
+  # init is the single strongest source of functional diversity; subspace
+  # tricks (MC Dropout, SWAG) stay in one mode. exp-001/002 both showed
+  # gen-over-gen diversity collapse at immigration_fraction=0.10-0.17;
+  # bumped to 0.25 per literature-small-corpus-ensembles.md §9 P1-#7.
+  immigration_fraction: 0.25
+  mutation_strength: 0.2  # continuous params multiplied by (1 +/- this)
+  max_generations: 200
+  stagnation_patience: 20
+  eval_combinations: 5000  # random combinations to evaluate per generation
+
+# Ensemble eval
+ensemble:
+  # `aggregation` is legacy (metadata-only label).
+  aggregation: logit_average
+  eval_batch_size: 128
+  # Aggregator used by controller/ensemble_eval.py._compute_ensemble_loss.
+  #   logit_mean           — plain mean-of-logits + softmax (= geometric
+  #                           mean of probabilities, a.k.a. Product of
+  #                           Experts). Blows up when any member assigns
+  #                           ~0 probability to the truth.
+  #   logit_mean_smoothed  — as above, but ε-smooth each member's softmax
+  #                           with uniform(1/V) at α = smoothing_eps. Floors
+  #                           per-member probabilities; kills geometric-mean
+  #                           blowup on overconfident memorizers. Default.
+  #                           See docs/ensemble_lit_review.md §1 Fix A.
+  #   prob_mean            — arithmetic mean of softmax probabilities
+  #                           (BMA-style). Bounded by log(V).
+  aggregator: logit_mean_smoothed
+  smoothing_eps: 0.05
+
+# Paths
+paths:
+  corpus_dir: ./corpus
+  checkpoint_dir: ./checkpoints
+  results_dir: ./results
+  lineage_db: ./results/lineage.db
+
+# Search space bounds
+search_space:
+  n_layer: [4, 6, 8, 10, 12]
+  n_head: [4, 6, 8]
+  n_embd: [256, 384, 512]
+  dropout: [0.0, 0.3]
+  weight_decay: [0.1, 3.0]
+  learning_rate: [1e-4, 1e-2]
+  optimizer: [adamw, muon]
+  epochs: [10, 200]
+  warmup_fraction: [0.01, 0.1]
+  lr_schedule: [cosine, linear, constant_with_warmup]

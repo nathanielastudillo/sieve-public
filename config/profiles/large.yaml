@@ -1,0 +1,19 @@
+# SIEVE Profile: large (16-32 workers)
+# Aggressive settings — bigger population, more exploration,
+# shorter individual training since we have throughput to burn.
+
+evolution:
+  population_size: 64
+  ensemble_size: 12
+  elite_fraction: 0.2           # smaller elite fraction — more turnover
+  immigration_fraction: 0.15    # more immigrants — broader exploration
+  mutation_strength: 0.25       # stronger mutations
+  max_generations: 300
+  stagnation_patience: 25
+  eval_combinations: 10000
+
+training:
+  epochs: 30                    # shorter per individual — rely on population breadth
+
+ensemble:
+  eval_batch_size: 256

@@ -1,0 +1,18 @@
+# SIEVE Profile: medium (8-16 workers)
+# Balanced settings — matches default.yaml closely.
+
+evolution:
+  population_size: 32
+  ensemble_size: 8
+  elite_fraction: 0.25
+  immigration_fraction: 0.1
+  mutation_strength: 0.2
+  max_generations: 200
+  stagnation_patience: 20
+  eval_combinations: 5000
+
+training:
+  epochs: 50
+
+ensemble:
+  eval_batch_size: 128

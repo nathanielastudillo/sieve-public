@@ -1,0 +1,31 @@
+# sieve fleet peer list — canonical source for openweight.replicate.
+# Format: <name> <ip-or-hostname>
+# Refresh with: scripts/fleet_refresh_peers.sh (runs avahi-browse on gpu-01).
+# DHCP IPs drift on reboot; mDNS names sometimes cross-NIC-drift. IPs here
+# are a 2026-04-23 snapshot — prefer the script over editing by hand.
+#
+# Fleet spans two GB10 clusters:
+#  - compute-cluster (node-*): 12 nodes, CX-7 200G fabric
+#  - <standalone>-* (gen-2):          9 Tier-1 nodes bootstrapped 2026-04-23
+# Three <standalone> auth-denied, two offline, two driver-broken — not listed.
+node-1 <node-ip>
+node-2 <node-ip>
+node-3 <node-ip>
+node-4 <node-ip>
+node-5 <node-ip>
+node-6 <node-ip>
+node-7 <node-ip>
+node-8 <node-ip>
+node-9 <node-ip>
+node-10 <node-ip>
+node-11 <node-ip>
+node-12 <node-ip>
+<standalone>-359a <node-ip>
+<standalone>-519f <node-ip>
+<standalone>-8860 <node-ip>
+<standalone>-95f0 <node-ip>
+<standalone>-9dba <node-ip>
+<standalone>-a640 <node-ip>
+<standalone>-a6fd <node-ip>
+<standalone>-aa15 <node-ip>
+<standalone>-abc5 <node-ip>

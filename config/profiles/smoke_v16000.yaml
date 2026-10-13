@@ -1,0 +1,57 @@
+# SIEVE Profile: smoke
+# Minimum-viable evolutionary loop for plumbing validation on one GB10.
+# Run against corpus_v003 (85K train tokens, 16K BPE vocab).
+#
+# Population=6, ensemble=3 → C(6,3)=20 combos (brute-force tractable).
+# 2 generations; each ~25 min on one GB10.
+#
+# Convention: 2-element lists are CONTINUOUS ranges (log-uniform sampled),
+# 3+ element lists are DISCRETE choices. Pin architecture to valid combos
+# so we only evolve training hyperparams for the smoke test.
+
+model:
+  n_layer: 4
+  n_head: 4
+  n_embd: 256
+  block_size: 256
+  dropout: 0.1
+  bias: false
+  vocab_size: 16000
+
+training:
+  epochs: 8
+  batch_size: 32
+  learning_rate: 3e-4
+  weight_decay: 0.3
+  warmup_fraction: 0.05
+  lr_schedule: cosine
+  optimizer: adamw
+  gradient_clip: 1.0
+  shuffle_per_epoch: true
+
+evolution:
+  population_size: 6
+  ensemble_size: 3
+  elite_fraction: 0.34
+  immigration_fraction: 0.25  # was 0.17; see default.yaml for rationale (Fort 2019)
+  mutation_strength: 0.2
+  max_generations: 2
+  stagnation_patience: 5
+  eval_combinations: 20         # C(6,3)=20 — brute-force all combos
+
+ensemble:
+  eval_batch_size: 32
+
+# Smoke search_space: pin architecture to (n_layer=4, n_head=4, n_embd=256)
+# by using single-element discrete lists. Only evolve training hyperparams.
+search_space:
+  n_layer: [4]
+  n_head: [4]
+  n_embd: [256]
+  dropout: [0.0, 0.3]                          # continuous [0, 0.3]
+  weight_decay: [0.1, 1.5]                     # continuous [0.1, 1.5]
+  learning_rate: [1e-4, 5e-3]                  # continuous log-uniform
+  optimizer: [adamw]
+  epochs: [6, 7, 8, 10, 12]                    # discrete — trainer int-casts
+  warmup_fraction: [0.02, 0.1]                 # continuous
+  lr_schedule: [cosine, linear, constant_with_warmup]

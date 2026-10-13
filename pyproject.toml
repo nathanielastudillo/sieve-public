@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sieve"
+version = "0.1.0"
+description = "Evolutionary ensemble trainer for small transformers on GB10 GPU clusters"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    "torch>=2.0",
+    "tiktoken>=0.7",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "sentencepiece>=0.2",
+    "pymupdf>=1.24",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+tracking = ["wandb>=0.16"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+sieve = "controller.orchestrator:main"
+
+[tool.setuptools.packages.find]
+include = ["controller*", "model*", "worker*", "data*", "analysis*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

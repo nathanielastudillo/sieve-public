@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SIEVE lab bench</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a22;
+    --panel-2: #1d222c;
+    --border: #262d3a;
+    --fg: #d4d8e0;
+    --fg-dim: #8b94a6;
+    --fg-mute: #5e6675;
+    --accent: #79c2ff;
+    --accent-2: #ffb86b;
+    --diff-same: #5e6675;
+    --diff-diff: #ffb86b;
+    --good: #7adf8f;
+    --bad: #ff8e8e;
+    --pin: #79c2ff;
+    --ens: #c084fc;
+    --pane-prompt: #767d8c;
+    --pane-gen: #d4d8e0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; font-size: 13px; }
+  button { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+  button:hover { background: var(--border); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input, textarea, select { font: inherit; color: var(--fg); background: var(--panel-2);
+    border: 1px solid var(--border); padding: 4px 6px; border-radius: 4px; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .dim { color: var(--fg-dim); }
+  .mute { color: var(--fg-mute); }
+
+  /* ---- layout ---- */
+  #app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr;
+    grid-template-areas: "topbar topbar" "sidebar main"; height: 100vh; }
+  #topbar { grid-area: topbar; border-bottom: 1px solid var(--border); padding: 8px 12px;
+    display: flex; flex-direction: column; gap: 6px; background: var(--panel); }
+  #sidebar { grid-area: sidebar; border-right: 1px solid var(--border); overflow-y: auto;
+    background: var(--panel); }
+  #main { grid-area: main; overflow: auto; padding: 12px; }
+
+  /* ---- top bar ---- */
+  #prompt-row { display: flex; gap: 8px; align-items: stretch; }
+  #prompt { flex: 1; min-height: 56px; }
+  #controls { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+  #knobs { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center;
+    font-size: 12px; }
+  #knobs input[type=number] { width: 70px; }
+  #run-btn { padding: 8px 16px; font-weight: 600; background: var(--accent); color: #0f1115;
+    border-color: var(--accent); }
+  #run-btn:hover { background: #5fb1f5; }
+  #status { font-size: 12px; color: var(--fg-dim); padding-left: 4px; }
+
+  /* ---- sidebar ---- */
+  .run-section { border-bottom: 1px solid var(--border); }
+  .run-header { padding: 8px 12px; font-weight: 600; cursor: pointer; user-select: none;
+    background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
+  .run-header:hover { background: var(--border); }
+  .gen-section { border-top: 1px solid var(--border); }
+  .gen-header { padding: 4px 12px 4px 18px; font-size: 11px; color: var(--fg-dim);
+    text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; user-select: none; }
+  .gen-header:hover { color: var(--fg); }
+  .ens-header { padding: 4px 12px 4px 18px; font-size: 11px; color: var(--ens);
+    text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .ckpt-row { display: grid; grid-template-columns: 18px 18px 1fr; align-items: center;
+    gap: 6px; padding: 4px 12px 4px 14px; font-size: 12px; cursor: default; }
+  .ckpt-row:hover { background: var(--panel-2); }
+  .ckpt-row.pinned { background: rgba(121, 194, 255, 0.08); }
+  .ckpt-row .pin-btn { background: transparent; border: 1px solid var(--border); padding: 0;
+    width: 18px; height: 18px; border-radius: 3px; color: var(--fg-mute); font-size: 11px;
+    line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .ckpt-row.pinned .pin-btn { color: var(--pin); border-color: var(--pin); }
+  .ckpt-row .check { width: 14px; height: 14px; cursor: pointer; }
+  .ckpt-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ckpt-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .ckpt-stats { font-size: 10.5px; color: var(--fg-dim); display: flex; gap: 8px; flex-wrap: wrap; }
+  .ckpt-stats .vl { color: var(--good); }
+  .ckpt-stats .vl.bad { color: var(--bad); }
+
+  .ens-row { display: grid; grid-template-columns: 18px 1fr; align-items: center;
+    gap: 6px; padding: 4px 12px 4px 14px; font-size: 12px; }
+  .ens-row:hover { background: var(--panel-2); }
+  .ens-row.pinned { background: rgba(192, 132, 252, 0.08); }
+  .ens-row .pin-btn { color: var(--ens); border-color: var(--border); background: transparent;
+    width: 18px; height: 18px; padding: 0; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; }
+  .ens-row.pinned .pin-btn { border-color: var(--ens); }
+
+  #compose-bar { position: sticky; bottom: 0; background: var(--panel-2);
+    border-top: 1px solid var(--border); padding: 8px 12px;
+    display: none; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+  #compose-bar.visible { display: flex; }
+  #compose-bar select { padding: 2px 4px; font-size: 11px; }
+
+  /* ---- main panes ---- */
+  #pane-grid { display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+  .pane { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    display: flex; flex-direction: column; overflow: hidden; min-height: 220px; }
+  .pane-head { padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--panel-2);
+    display: flex; flex-direction: column; gap: 4px; }
+  .pane-title { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
+  .pane-title .badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .pane-title .badge.ckpt { background: rgba(121, 194, 255, 0.15); color: var(--accent); }
+  .pane-title .badge.ens  { background: rgba(192, 132, 252, 0.15); color: var(--ens); }
+  .pane-title .close { margin-left: auto; background: transparent; border: none; color: var(--fg-mute);
+    cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .pane-title .close:hover { color: var(--fg); }
+  .pane-meta { font-size: 11px; color: var(--fg-dim); display: flex; flex-wrap: wrap;
+    gap: 3px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .pane-meta .same { color: var(--diff-same); }
+  .pane-meta .diff { color: var(--diff-diff); font-weight: 600; }
+  .pane-body { flex: 1; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    overflow-y: auto; max-height: 600px; }
+  .pane-body .prompt-text { color: var(--pane-prompt); }
+  .pane-body .gen-text { color: var(--pane-gen); }
+  .pane-foot { padding: 6px 10px; border-top: 1px solid var(--border); background: var(--panel-2);
+    display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--fg-dim); }
+  .pane-foot .reroll { font-size: 11px; padding: 2px 8px; }
+  .pane-foot .ens-agg { margin-left: auto; }
+  .pane-foot select { font-size: 11px; padding: 1px 4px; }
+
+  .pane.ensemble { border-color: rgba(192, 132, 252, 0.4); }
+  .pane.error .pane-body { color: var(--bad); }
+
+  .empty { color: var(--fg-dim); text-align: center; padding: 60px 20px; font-size: 14px; }
+  .empty code { background: var(--panel); padding: 2px 5px; border-radius: 3px; }
+
+  /* contributions */
+  .contrib { font-size: 10.5px; color: var(--fg-dim); padding: 8px 12px;
+    border-top: 1px dashed var(--border); max-height: 200px; overflow-y: auto; }
+  .contrib table { border-collapse: collapse; width: 100%; }
+  .contrib th, .contrib td { text-align: right; padding: 1px 6px;
+    font-family: ui-monospace, monospace; }
+  .contrib th { color: var(--fg-mute); font-weight: 500; }
+  .contrib td.tok { text-align: left; color: var(--fg); }
+  .contrib tr.chosen { background: rgba(121, 194, 255, 0.08); color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="prompt-row">
+      <textarea id="prompt" placeholder="Prompt — same text gets sent to every pinned pane">The subject of the unconscious is structured like</textarea>
+      <div id="controls">
+        <div id="knobs">
+          <label data-tt="max_tokens">max tokens</label> <input id="k-max" type="number" value="100" min="1" max="500" data-tt="max_tokens" />
+          <label data-tt="temperature">temperature</label> <input id="k-temp" type="number" value="0.8" min="0.05" max="3.0" step="0.05" data-tt="temperature" />
+          <label data-tt="top_k">top-k</label> <input id="k-topk" type="number" value="40" min="0" max="16000" data-tt="top_k" />
+          <label data-tt="seed">seed</label>
+          <span style="display:flex; gap:4px;">
+            <input id="k-seed" type="number" value="1234" data-tt="seed" />
+            <label style="display:flex; align-items:center; gap:3px; font-size:11px; color:var(--fg-dim);"
+                   title="When on, all panes share the same seed so any difference is the model, not RNG.">
+              <input id="k-seed-lock" type="checkbox" checked /> lock
+            </label>
+          </span>
+          <label data-tt="contributions">contributions</label>
+          <span title="When on, ensemble panes return per-step top-5 tokens with each member's logprob. Slows generation slightly. Single-checkpoint panes ignore this."><input id="k-contrib" type="checkbox" /> <span class="dim">(ensemble panes only)</span></span>
+        </div>
+        <button id="run-btn">Generate ▶</button>
+        <div id="status">ready</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="sidebar-content">loading…</div>
+    <div id="compose-bar">
+      <span><span id="compose-count">0</span> selected</span>
+      <select id="compose-agg">
+        <option value="logit">logit-avg (SIEVE default)</option>
+        <option value="prob">prob-avg</option>
+      </select>
+      <button id="compose-btn">Compose ad-hoc ensemble</button>
+      <button id="compose-clear">clear</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="pane-grid"></div>
+    <div id="empty-state" class="empty">
+      Pin checkpoints from the sidebar to start.<br>
+      Multi-select with checkboxes to <span style="color:var(--ens);">compose ad-hoc ensembles</span>.
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- state ----------
+const state = {
+  checkpoints: {},      // key -> entry
+  ensembles: {},        // key -> entry
+  pinned: [],           // array of pane spec objects in order
+  selected: new Set(),  // checkpoint keys checked for compose
+  device: "?",
+  collapsedRuns: new Set(),
+  collapsedGens: new Set(),
+  adhocCounter: 0,
+};
+
+// ---------- helpers ----------
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+const el = (tag, attrs={}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null) continue;
+    e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  }
+  return e;
+};
+const fmt = {
+  loss: v => v == null ? "—" : v.toFixed(3),
+  num:  v => v == null ? "—" : Number(v).toLocaleString(),
+  hp:   v => typeof v === "number" ? (Math.abs(v) < 0.01 || Math.abs(v) >= 1000 ? v.toExponential(2) : v.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")) : String(v),
+};
+
+// ---------- tooltips: single source of truth for metric/hyperparam meaning ----------
+// Tone: terse, factual. State unit + direction (lower/higher better) + SIEVE-specific
+// reference points (uniform-baseline = ln(16000) = 9.68 nats).
+const TT = {
+  // ---- measured metrics ----
+  vl_individual:
+    "val_loss — cross-entropy on the held-out validation set, in nats.\n" +
+    "Lower = better fit. With vocab=16K, uniform baseline = ln(16000) ≈ 9.68 nats.\n" +
+    "Individual SIEVE members typically train down to ~0.05–0.25 (near-memorized);\n" +
+    "those numbers are NOT the model's general LM ability — see test.bin for that.",
+  vl_ensemble:
+    "ensemble_val_loss — cross-entropy of the logit-averaged ensemble on val, in nats.\n" +
+    "Lower = better. SIEVE selects ensembles to minimize this. Current best ~8.7–8.8\n" +
+    "vs uniform-baseline 9.68, so the ensemble beats uniform by ~0.9 nats.",
+  diversity:
+    "diversity_score — selection-time pairwise KL divergence between members'\n" +
+    "next-token distributions on val. Higher = more diverse predictions.\n" +
+    "SIEVE selects FOR diversity (the core thesis: complementary members > best singleton).",
+  aggregation:
+    "aggregation method for ensemble next-token distribution:\n" +
+    "  logit-avg = average raw logits, then softmax (SIEVE default; theoretically correct).\n" +
+    "  prob-avg  = softmax each member, then average probabilities (calibration-equivalent).\n" +
+    "Logit-avg generally outperforms prob-avg on NLL (Njieutcheu Tassi et al., 2022).",
+  n_params:
+    "Total parameter count of the model (excluding non-tied position embeddings).\n" +
+    "All current SIEVE members are 7.4M params (n_layer=4, n_head=4, n_embd=256).",
+  tokens_generated: "Number of tokens this pane produced (after the prompt).",
+  elapsed_ms: "Wall-clock time for this pane's generation, including any first-call model load.",
+
+  // ---- architecture hyperparams ----
+  n_layer:    "n_layer — number of transformer blocks (depth). Higher = more capacity, more compute.",
+  n_head:     "n_head — number of attention heads per block. Must divide n_embd.",
+  n_embd:     "n_embd — embedding/residual stream width. Higher = more capacity, quadratic FFN cost.",
+  block_size: "block_size — maximum context window in tokens. SIEVE current = 256;\nlonger prompts get silently truncated by GPT.generate().",
+  vocab_size: "vocab_size — tokenizer vocabulary size. SIEVE current = 16000 (custom v002 BPE).",
+  bias:       "bias — whether linear layers use additive bias terms. SIEVE default false.",
+
+  // ---- training hyperparams ----
+  optimizer:       "optimizer — AdamW (baseline) or Muon (Slowrun finding: Muon outperforms AdamW for data efficiency).",
+  learning_rate:   "learning_rate — peak LR after warmup. Higher = faster convergence but more instability.",
+  dropout:         "dropout — probability of zeroing activations during training.\nSlowrun finding: aggressive dropout helps in the data-constrained regime.",
+  weight_decay:    "weight_decay — L2 regularization coefficient.\nSlowrun finding: optimal WD is up to 16x the AdamW default in data-constrained training.",
+  epochs:          "epochs — number of full passes over the training corpus.\nMulti-epoch is essential at 100K tokens.",
+  warmup_fraction: "warmup_fraction — fraction of total steps spent linearly ramping LR from 0 to peak.",
+  lr_schedule:     "lr_schedule — how learning rate decays after warmup: cosine, linear, or constant_with_warmup.",
+
+  // ---- generation knobs ----
+  max_tokens:  "Number of new tokens each pane will generate beyond the prompt.",
+  temperature: "Sampling temperature applied to the (averaged) logits before softmax.\n" +
+               "1.0 = no change. <1 = more deterministic (peaks sharper). >1 = more random.\n" +
+               "0.8 is a typical creative-but-coherent setting.",
+  top_k:       "top-k filtering: at each step, keep only the k highest-logit tokens before sampling.\n" +
+               "Higher = more diverse but more chance of nonsense. Set 0 to disable.",
+  seed:        "RNG seed for sampling. With 'lock' on, all panes use the same seed —\n" +
+               "any difference between panes is then due to the model, not RNG.",
+  contributions:
+    "When on, ensemble panes return per-step top-5 tokens with each member's logprob.\n" +
+    "Useful for seeing which member is pulling the ensemble where, and how confident\n" +
+    "each member is. Slows generation slightly. Single-checkpoint panes ignore this.",
+
+  // ---- contributions table ----
+  contrib_step: "Generation step index (0 = first token after prompt).",
+  contrib_tok:  "Token id of one of the top-5 candidates from the averaged distribution at that step.\nHighlighted row = the token that was actually sampled.",
+  contrib_avg:  "Logprob the averaged ensemble distribution assigned to this token (nats).",
+  contrib_mem:  "Logprob this individual member assigned to this token (nats).\nNear 0 = member is near-certain. Very negative = member would not have picked it.",
+};
+const tt = (k) => TT[k] || "";
+
+// ---------- data load ----------
+async function loadRegistry() {
+  const [ckpts, enss] = await Promise.all([
+    fetch("/api/checkpoints").then(r => r.json()),
+    fetch("/api/ensembles").then(r => r.json()),
+  ]);
+  state.device = ckpts.device || "?";
+  state.checkpoints = {};
+  for (const run of Object.keys(ckpts.runs)) {
+    for (const c of ckpts.runs[run]) state.checkpoints[c.key] = c;
+  }
+  state.ensembles = {};
+  for (const run of Object.keys(enss.runs)) {
+    for (const e of enss.runs[run]) state.ensembles[e.key] = e;
+  }
+  renderSidebar();
+}
+
+// ---------- sidebar ----------
+function renderSidebar() {
+  const root = $("#sidebar-content");
+  root.innerHTML = "";
+
+  // Group checkpoints by run -> generation
+  const byRun = {};
+  for (const c of Object.values(state.checkpoints)) {
+    (byRun[c.run] = byRun[c.run] || []).push(c);
+  }
+  // Group ensembles by run
+  const ensByRun = {};
+  for (const e of Object.values(state.ensembles)) {
+    (ensByRun[e.run] = ensByRun[e.run] || []).push(e);
+  }
+
+  const runs = Array.from(new Set([...Object.keys(byRun), ...Object.keys(ensByRun)])).sort();
+  for (const run of runs) {
+    const runCkpts = byRun[run] || [];
+    const runEnss = ensByRun[run] || [];
+    const collapsed = state.collapsedRuns.has(run);
+
+    const section = el("div", {class: "run-section"});
+    const header = el("div", {class: "run-header", onclick: () => {
+      if (collapsed) state.collapsedRuns.delete(run); else state.collapsedRuns.add(run);
+      renderSidebar();
+    }},
+      `${collapsed ? "▸" : "▾"} ${run}`,
+      el("span", {class: "dim", style: "float:right; font-weight:400; font-size:11px;"},
+        `${runCkpts.length} ckpt · ${runEnss.length} ens`),
+    );
+    section.append(header);
+
+    if (!collapsed) {
+      // Saved ensembles first
+      if (runEnss.length) {
+        section.append(el("div", {class: "ens-header"}, "saved ensembles"));
+        for (const e of runEnss) {
+          const pinned = state.pinned.some(p => p.key === e.key);
+          section.append(renderEnsembleRow(e, pinned));
+        }
+      }
+      // Checkpoints grouped by generation
+      const byGen = {};
+      for (const c of runCkpts) {
+        const g = c.generation == null ? "—" : `gen-${String(c.generation).padStart(3, "0")}`;
+        (byGen[g] = byGen[g] || []).push(c);
+      }
+      const genKeys = Object.keys(byGen).sort();
+      for (const g of genKeys) {
+        const gKey = `${run}/${g}`;
+        const gCollapsed = state.collapsedGens.has(gKey);
+        section.append(el("div", {class: "gen-header", onclick: () => {
+          if (gCollapsed) state.collapsedGens.delete(gKey); else state.collapsedGens.add(gKey);
+          renderSidebar();
+        }},
+          `${gCollapsed ? "▸" : "▾"} ${g} (${byGen[g].length})`,
+        ));
+        if (!gCollapsed) {
+          for (const c of byGen[g]) {
+            const pinned = state.pinned.some(p => p.key === c.key);
+            section.append(renderCkptRow(c, pinned));
+          }
+        }
+      }
+    }
+    root.append(section);
+  }
+  updateComposeBar();
+}
+
+function renderCkptRow(c, pinned) {
+  const valLoss = c.val_loss;
+  const valBad = valLoss != null && valLoss > 5;  // val ~10 means uniform-baseline territory
+  const cfg = c.config || {};
+  const stats = el("div", {class: "ckpt-stats"},
+    el("span", {class: "vl" + (valBad ? " bad" : ""), title: tt("vl_individual")}, `vl=${fmt.loss(valLoss)}`),
+    cfg.optimizer ? el("span", {title: tt("optimizer")}, cfg.optimizer) : null,
+    cfg.learning_rate != null ? el("span", {title: tt("learning_rate")}, `lr=${fmt.hp(cfg.learning_rate)}`) : null,
+    cfg.dropout != null ? el("span", {title: tt("dropout")}, `drop=${fmt.hp(cfg.dropout)}`) : null,
+  );
+  const checkbox = el("input", {type: "checkbox", class: "check"});
+  checkbox.checked = state.selected.has(c.key);
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) state.selected.add(c.key); else state.selected.delete(c.key);
+    updateComposeBar();
+  });
+  const pinBtn = el("button", {class: "pin-btn", title: pinned ? "unpin" : "pin as pane",
+    onclick: () => { togglePin(c); }}, pinned ? "●" : "+");
+  return el("div", {class: "ckpt-row" + (pinned ? " pinned" : "")},
+    pinBtn, checkbox,
+    el("div", {class: "ckpt-meta"},
+      el("span", {class: "ckpt-id"}, shortKey(c.key)),
+      stats,
+    ),
+  );
+}
+
+function renderEnsembleRow(e, pinned) {
+  const pinBtn = el("button", {class: "pin-btn", title: pinned ? "unpin" : "pin as pane",
+    onclick: () => { togglePinEnsemble(e); }}, pinned ? "●" : "+");
+  return el("div", {class: "ens-row" + (pinned ? " pinned" : "")},
+    pinBtn,
+    el("div", {class: "ckpt-meta"},
+      el("span", {class: "ckpt-id", title: `Saved ensemble of ${e.member_keys.length} members from ${e.run}`},
+        `${e.name} (${e.member_keys.length})`),
+      el("div", {class: "ckpt-stats"},
+        el("span", {class: "vl", title: tt("vl_ensemble")}, `vl=${fmt.loss(e.val_loss)}`),
+        e.diversity_score != null ? el("span", {title: tt("diversity")}, `div=${fmt.hp(e.diversity_score)}`) : null,
+        el("span", {style: "color:var(--ens)", title: tt("aggregation")}, e.aggregation || "logit"),
+      ),
+    ),
+  );
+}
+
+function shortKey(key) {
+  // "smoke_loop_v005/gen-002-c884ab4b" -> "v005·gen-002·c884ab4b"
+  const parts = key.split("/");
+  if (parts.length === 1) return key;
+  const run = parts[0].replace("smoke_loop_", "").replace("smoke_loop", "v003").replace("smoke_v003", "v003-old");
+  return `${run} · ${parts.slice(1).join(" · ")}`;
+}
+
+// ---------- compose bar ----------
+function updateComposeBar() {
+  const bar = $("#compose-bar");
+  $("#compose-count").textContent = state.selected.size;
+  bar.classList.toggle("visible", state.selected.size >= 2);
+}
+
+$("#compose-btn").addEventListener("click", () => {
+  if (state.selected.size < 2) return;
+  const ids = Array.from(state.selected);
+  const ckpts = ids.map(k => state.checkpoints[k]).filter(Boolean);
+  const aggregation = $("#compose-agg").value;
+  const adhocId = ++state.adhocCounter;
+  const spec = {
+    key: `ens:adhoc-${adhocId}`,
+    kind: "ensemble",
+    aggregation,
+    paths: ckpts.map(c => c.path),
+    name: `adhoc #${adhocId}`,
+    member_keys: ids,
+    member_configs: ckpts.map(c => c.config || {}),
+    val_loss: null,
+    isAdhoc: true,
+  };
+  state.pinned.push(spec);
+  state.selected.clear();
+  renderSidebar();
+  renderPanes();
+});
+
+$("#compose-clear").addEventListener("click", () => {
+  state.selected.clear();
+  renderSidebar();
+});
+
+// ---------- pin / unpin ----------
+function togglePin(c) {
+  const idx = state.pinned.findIndex(p => p.key === c.key);
+  if (idx >= 0) state.pinned.splice(idx, 1);
+  else state.pinned.push({
+    key: c.key, kind: "checkpoint", paths: [c.path],
+    name: shortKey(c.key), config: c.config || {}, val_loss: c.val_loss,
+    n_params: c.n_params,
+  });
+  renderSidebar();
+  renderPanes();
+}
+
+function togglePinEnsemble(e) {
+  const idx = state.pinned.findIndex(p => p.key === e.key);
+  if (idx >= 0) state.pinned.splice(idx, 1);
+  else state.pinned.push({
+    key: e.key, kind: "ensemble", paths: e.member_paths,
+    aggregation: e.aggregation || "logit",
+    name: e.name, member_keys: e.member_keys,
+    member_configs: e.member_keys.map(k => (state.checkpoints[k] || {}).config || {}),
+    val_loss: e.val_loss, diversity_score: e.diversity_score,
+  });
+  renderSidebar();
+  renderPanes();
+}
+
+// ---------- panes ----------
+function renderPanes() {
+  const grid = $("#pane-grid");
+  grid.innerHTML = "";
+  $("#empty-state").style.display = state.pinned.length ? "none" : "";
+  if (!state.pinned.length) return;
+
+  // Compute hyperparam diff across pinned checkpoint panes
+  const ckptPanes = state.pinned.filter(p => p.kind === "checkpoint");
+  const diffStatus = computeDiff(ckptPanes.map(p => p.config || {}));
+
+  for (const spec of state.pinned) {
+    grid.append(renderPane(spec, diffStatus));
+  }
+}
+
+function computeDiff(configs) {
+  // Returns: { key: "same" | "diff" } across all configs
+  if (configs.length < 2) return {};
+  const allKeys = new Set();
+  for (const c of configs) for (const k of Object.keys(c)) allKeys.add(k);
+  const out = {};
+  for (const k of allKeys) {
+    const vals = configs.map(c => JSON.stringify(c[k] ?? null));
+    out[k] = vals.every(v => v === vals[0]) ? "same" : "diff";
+  }
+  return out;
+}
+
+const HP_ORDER = ["n_layer", "n_head", "n_embd", "block_size", "vocab_size",
+                  "optimizer", "learning_rate", "dropout", "weight_decay",
+                  "epochs", "warmup_fraction", "lr_schedule", "bias"];
+
+function hpRowFor(config, diffStatus) {
+  const out = [];
+  const keys = Object.keys(config).sort((a, b) => {
+    const ai = HP_ORDER.indexOf(a), bi = HP_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+  for (const k of keys) {
+    const status = diffStatus[k] || "";
+    const cls = status === "same" ? "same" : (status === "diff" ? "diff" : "");
+    const baseTip = tt(k);
+    const diffTip = status === "diff"
+      ? "\n\n[differs across pinned panes]"
+      : (status === "same" ? "\n\n[identical across pinned panes]" : "");
+    out.push(el("span", {class: cls, title: (baseTip || k) + diffTip}, `${k}=${fmt.hp(config[k])}`));
+  }
+  return out;
+}
+
+function renderPane(spec, diffStatus) {
+  const isEns = spec.kind === "ensemble";
+  const close = el("button", {class: "close", title: "close",
+    onclick: () => { state.pinned = state.pinned.filter(p => p.key !== spec.key); renderPanes(); renderSidebar(); }}, "×");
+  const badge = el("span", {class: "badge " + (isEns ? "ens" : "ckpt")},
+    isEns ? `ensemble · ${spec.paths.length}` : "checkpoint");
+  const title = el("div", {class: "pane-title"}, badge, el("span", {}, spec.name), close);
+
+  let metaContent;
+  if (isEns) {
+    metaContent = [
+      el("span", {title: tt("aggregation")}, `agg=${spec.aggregation}`),
+      spec.val_loss != null ? el("span", {title: tt("vl_ensemble")}, `vl=${fmt.loss(spec.val_loss)}`) : null,
+      spec.diversity_score != null ? el("span", {title: tt("diversity")}, `div=${fmt.hp(spec.diversity_score)}`) : null,
+      el("span", {class: "dim", title: "Member checkpoint keys (run · gen · short id)"},
+        `members: ${(spec.member_keys || []).map(shortKey).join(" + ")}`),
+    ];
+  } else {
+    metaContent = hpRowFor(spec.config || {}, diffStatus);
+    metaContent.unshift(el("span", {title: tt("vl_individual")}, `vl=${fmt.loss(spec.val_loss)}`));
+    if (spec.n_params) metaContent.push(el("span", {class: "dim", title: tt("n_params")}, `${(spec.n_params/1e6).toFixed(1)}M params`));
+  }
+  const meta = el("div", {class: "pane-meta"}, ...metaContent);
+  const head = el("div", {class: "pane-head"}, title, meta);
+
+  const body = el("div", {class: "pane-body", id: `body-${spec.key}`},
+    el("span", {class: "prompt-text"}, $("#prompt").value),
+  );
+
+  const reroll = el("button", {class: "reroll", onclick: () => generateOne(spec)}, "↻ reroll");
+  let aggSelect = null;
+  if (isEns) {
+    aggSelect = el("select", {class: "ens-agg-select", onchange: (e) => {
+      spec.aggregation = e.target.value; renderPanes();
+    }},
+      el("option", {value: "logit"}, "logit-avg"),
+      el("option", {value: "prob"}, "prob-avg"),
+    );
+    aggSelect.value = spec.aggregation;
+  }
+  const foot = el("div", {class: "pane-foot"},
+    reroll,
+    el("span", {id: `stat-${spec.key}`, class: "dim",
+      title: `${tt("tokens_generated")}\n\n${tt("elapsed_ms")}`}, ""),
+    aggSelect ? el("span", {class: "ens-agg", title: tt("aggregation")}, "aggregation: ", aggSelect) : null,
+  );
+
+  const pane = el("div", {class: "pane" + (isEns ? " ensemble" : "")}, head, body, foot);
+  return pane;
+}
+
+// ---------- generation ----------
+async function generateAll() {
+  if (!state.pinned.length) { setStatus("nothing pinned"); return; }
+  const req = buildRequest(state.pinned);
+  setStatus(`generating ${state.pinned.length} pane(s)…`);
+  $("#run-btn").disabled = true;
+  try {
+    await runRequest(req);
+    setStatus(`done · ${state.pinned.length} pane(s)`);
+  } catch (e) {
+    setStatus(`error: ${e.message}`);
+  } finally {
+    $("#run-btn").disabled = false;
+  }
+}
+
+async function generateOne(spec) {
+  const req = buildRequest([spec]);
+  setStatus(`reroll ${spec.name}…`);
+  await runRequest(req);
+  setStatus(`done · ${spec.name}`);
+}
+
+function buildRequest(specs) {
+  const seedLock = $("#k-seed-lock").checked;
+  return {
+    models: specs.map(s => ({
+      key: s.key, kind: s.kind, paths: s.paths, aggregation: s.aggregation || "logit",
+    })),
+    prompt: $("#prompt").value,
+    max_new_tokens: parseInt($("#k-max").value, 10) || 100,
+    temperature: parseFloat($("#k-temp").value) || 0.8,
+    top_k: (() => { const v = parseInt($("#k-topk").value, 10); return v > 0 ? v : null; })(),
+    seed: seedLock ? (parseInt($("#k-seed").value, 10) || 0) : null,
+    show_contributions: $("#k-contrib").checked,
+  };
+}
+
+async function runRequest(req) {
+  const r = await fetch("/api/complete", {
+    method: "POST", headers: {"content-type": "application/json"},
+    body: JSON.stringify(req),
+  });
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error(`HTTP ${r.status}: ${txt}`);
+  }
+  const data = await r.json();
+  for (const result of data.results) {
+    paintPane(result, req.prompt);
+  }
+}
+
+function paintPane(result, prompt) {
+  const body = $(`#body-${cssEscape(result.key)}`);
+  if (!body) return;
+  body.innerHTML = "";
+  if (result.error) {
+    body.append(el("span", {style: "color:var(--bad)"}, "error: " + result.error));
+  } else {
+    body.append(el("span", {class: "prompt-text"}, prompt));
+    body.append(el("span", {class: "gen-text"}, result.completion));
+  }
+  const stat = $(`#stat-${cssEscape(result.key)}`);
+  if (stat) {
+    stat.textContent = `${result.tokens_generated} tok · ${result.elapsed_ms.toFixed(0)} ms`;
+  }
+  // Contributions
+  const pane = body.closest(".pane");
+  if (pane) {
+    pane.querySelectorAll(".contrib").forEach(n => n.remove());
+    if (result.contributions && result.contributions.length) {
+      pane.append(renderContrib(result.contributions));
+    }
+  }
+}
+
+function renderContrib(contribs) {
+  const wrap = el("div", {class: "contrib"});
+  // Show first 12 steps as a compact table
+  const slice = contribs.slice(0, 12);
+  const memberCount = slice[0].per_member_logprobs.length;
+  const head = el("tr", {},
+    el("th", {style: "text-align:left", title: tt("contrib_step")}, "step"),
+    el("th", {title: tt("contrib_tok")}, "tok"),
+    el("th", {title: tt("contrib_avg")}, "avg"),
+    ...Array.from({length: memberCount}, (_, i) => el("th", {title: tt("contrib_mem")}, `m${i}`)),
+  );
+  const rows = [head];
+  slice.forEach((c, stepIdx) => {
+    c.top_token_ids.forEach((tid, j) => {
+      const isChosen = tid === c.chosen_token_id;
+      rows.push(el("tr", {class: isChosen ? "chosen" : ""},
+        el("td", {style: "text-align:left"}, j === 0 ? String(stepIdx) : ""),
+        el("td", {class: "tok"}, "·" + String(tid).padStart(5)),
+        el("td", {}, c.avg_logprobs[j].toFixed(2)),
+        ...c.per_member_logprobs.map(mp => el("td", {}, mp[j].toFixed(2))),
+      ));
+    });
+  });
+  wrap.append(el("table", {}, ...rows));
+  if (contribs.length > 12) {
+    wrap.append(el("div", {class: "dim", style: "margin-top:4px"},
+      `… ${contribs.length - 12} more steps`));
+  }
+  return wrap;
+}
+
+function cssEscape(s) {
+  // Escape for use inside an attribute selector — replace ":" and "/" with escaped form.
+  return s.replace(/([!"#$%&'()*+,./:;<=>?@[\]^`{|}~])/g, "\\$1");
+}
+
+function setStatus(msg) { $("#status").textContent = msg; }
+
+// ---------- bind ----------
+$("#run-btn").addEventListener("click", generateAll);
+$("#prompt").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generateAll();
+});
+
+// Resolve data-tt="key" attributes to title= using the TT map.
+function applyDataTooltips() {
+  $$("[data-tt]").forEach(node => {
+    const key = node.getAttribute("data-tt");
+    if (key && TT[key]) node.setAttribute("title", TT[key]);
+  });
+}
+applyDataTooltips();
+
+loadRegistry().then(() => {
+  setStatus(`ready · ${Object.keys(state.checkpoints).length} ckpt · ${Object.keys(state.ensembles).length} ens · ${state.device}`);
+});
+</script>
+</body>
+</html>

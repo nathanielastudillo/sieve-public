@@ -1,0 +1,312 @@
+[
+  {
+    "corpus": "corpus_v003 (tok=v002, 16K)",
+    "vocab_size": 16000,
+    "train_tokens": 84992,
+    "val_tokens": 9728,
+    "test_tokens": 4608,
+    "test_magikarp_exposure_by_threshold": {
+      "0": 0.03884548611111111,
+      "1": 0.0837673611111111,
+      "5": 0.20247395833333334,
+      "10": 0.2873263888888889,
+      "20": 0.3702256944444444,
+      "50": 0.4776475694444444
+    },
+    "val_magikarp_exposure_by_threshold": {
+      "0": 0.04204358552631579,
+      "1": 0.09148848684210527,
+      "5": 0.21145148026315788,
+      "10": 0.2915296052631579,
+      "20": 0.3737664473684211,
+      "50": 0.4974300986842105
+    },
+    "unique_train_tokens": 9551,
+    "unique_train_fraction": 0.5969375,
+    "magikarp_pct_at_threshold": {
+      "0": 0.4030625,
+      "1": 0.6123125,
+      "5": 0.8704375,
+      "10": 0.9340625,
+      "20": 0.9693125,
+      "50": 0.988875
+    },
+    "ln_V_uniform_nll": 9.680344001221918,
+    "train_freq_baseline_nll_val": 7.259348807041595,
+    "train_freq_baseline_nll_test": 7.195166596675007,
+    "val_coverage": {
+      "tokens": 9728,
+      "seen_in_train": 9319,
+      "oov_to_train_pct": 0.04204358552631579
+    },
+    "test_coverage": {
+      "tokens": 4608,
+      "seen_in_train": 4429,
+      "oov_to_train_pct": 0.03884548611111111
+    },
+    "top5_token_ids": [
+      15,
+      144,
+      159,
+      17,
+      109
+    ],
+    "top5_freqs": [
+      3741,
+      3719,
+      2498,
+      2115,
+      1858
+    ],
+    "tokens_with_freq_0": 6449,
+    "tokens_with_freq_1": 3348
+  },
+  {
+    "corpus": "corpus_v005 (tok=v002, 16K)",
+    "vocab_size": 16000,
+    "train_tokens": 82944,
+    "val_tokens": 9216,
+    "test_tokens": 4608,
+    "test_magikarp_exposure_by_threshold": {
+      "0": 0.04079861111111111,
+      "1": 0.0861545138888889,
+      "5": 0.2087673611111111,
+      "10": 0.2838541666666667,
+      "20": 0.3717447916666667,
+      "50": 0.4854600694444444
+    },
+    "val_magikarp_exposure_by_threshold": {
+      "0": 0.04123263888888889,
+      "1": 0.08213975694444445,
+      "5": 0.19986979166666666,
+      "10": 0.2731119791666667,
+      "20": 0.3598090277777778,
+      "50": 0.4766710069444444
+    },
+    "unique_train_tokens": 9298,
+    "unique_train_fraction": 0.581125,
+    "magikarp_pct_at_threshold": {
+      "0": 0.418875,
+      "1": 0.625875,
+      "5": 0.874625,
+      "10": 0.9363125,
+      "20": 0.9693125,
+      "50": 0.989
+    },
+    "ln_V_uniform_nll": 9.680344001221918,
+    "train_freq_baseline_nll_val": 7.111308917948997,
+    "train_freq_baseline_nll_test": 7.103083182365857,
+    "val_coverage": {
+      "tokens": 9216,
+      "seen_in_train": 8836,
+      "oov_to_train_pct": 0.04123263888888889
+    },
+    "test_coverage": {
+      "tokens": 4608,
+      "seen_in_train": 4420,
+      "oov_to_train_pct": 0.04079861111111111
+    },
+    "top5_token_ids": [
+      109,
+      15,
+      144,
+      159,
+      17
+    ],
+    "top5_freqs": [
+      4593,
+      3503,
+      3329,
+      2325,
+      1992
+    ],
+    "tokens_with_freq_0": 6702,
+    "tokens_with_freq_1": 3312
+  },
+  {
+    "corpus": "corpus_v006 (tok=v003, 16K)",
+    "vocab_size": 16000,
+    "train_tokens": 82944,
+    "val_tokens": 9216,
+    "test_tokens": 4608,
+    "test_magikarp_exposure_by_threshold": {
+      "0": 0.042317708333333336,
+      "1": 0.0857204861111111,
+      "5": 0.20811631944444445,
+      "10": 0.2868923611111111,
+      "20": 0.3743489583333333,
+      "50": 0.470703125
+    },
+    "val_magikarp_exposure_by_threshold": {
+      "0": 0.04796006944444445,
+      "1": 0.09516059027777778,
+      "5": 0.2160373263888889,
+      "10": 0.2951388888888889,
+      "20": 0.3728298611111111,
+      "50": 0.4802517361111111
+    },
+    "unique_train_tokens": 9478,
+    "unique_train_fraction": 0.592375,
+    "magikarp_pct_at_threshold": {
+      "0": 0.407625,
+      "1": 0.6220625,
+      "5": 0.87725,
+      "10": 0.93825,
+      "20": 0.9704375,
+      "50": 0.9893125
+    },
+    "ln_V_uniform_nll": 9.680344001221918,
+    "train_freq_baseline_nll_val": 7.132016330583642,
+    "train_freq_baseline_nll_test": 7.067243103904428,
+    "val_coverage": {
+      "tokens": 9216,
+      "seen_in_train": 8774,
+      "oov_to_train_pct": 0.04796006944444445
+    },
+    "test_coverage": {
+      "tokens": 4608,
+      "seen_in_train": 4413,
+      "oov_to_train_pct": 0.042317708333333336
+    },
+    "top5_token_ids": [
+      112,
+      15,
+      148,
+      162,
+      17
+    ],
+    "top5_freqs": [
+      4723,
+      3560,
+      3329,
+      2333,
+      2075
+    ],
+    "tokens_with_freq_0": 6522,
+    "tokens_with_freq_1": 3431
+  },
+  {
+    "corpus": "corpus_v008 (tok=v005, 8K) ",
+    "vocab_size": 8000,
+    "train_tokens": 81920,
+    "val_tokens": 9216,
+    "test_tokens": 4608,
+    "test_magikarp_exposure_by_threshold": {
+      "0": 0.024522569444444444,
+      "1": 0.051215277777777776,
+      "5": 0.1560329861111111,
+      "10": 0.2345920138888889,
+      "20": 0.3133680555555556,
+      "50": 0.4409722222222222
+    },
+    "val_magikarp_exposure_by_threshold": {
+      "0": 0.016927083333333332,
+      "1": 0.04307725694444445,
+      "5": 0.15125868055555555,
+      "10": 0.2351345486111111,
+      "20": 0.3349609375,
+      "50": 0.4600694444444444
+    },
+    "unique_train_tokens": 6410,
+    "unique_train_fraction": 0.80125,
+    "magikarp_pct_at_threshold": {
+      "0": 0.19875,
+      "1": 0.363625,
+      "5": 0.72975,
+      "10": 0.857625,
+      "20": 0.92975,
+      "50": 0.973375
+    },
+    "ln_V_uniform_nll": 8.987196820661973,
+    "train_freq_baseline_nll_val": 6.920423470532217,
+    "train_freq_baseline_nll_test": 6.897641043513677,
+    "val_coverage": {
+      "tokens": 9216,
+      "seen_in_train": 9060,
+      "oov_to_train_pct": 0.016927083333333332
+    },
+    "test_coverage": {
+      "tokens": 4608,
+      "seen_in_train": 4495,
+      "oov_to_train_pct": 0.024522569444444444
+    },
+    "top5_token_ids": [
+      112,
+      15,
+      148,
+      162,
+      17
+    ],
+    "top5_freqs": [
+      4283,
+      3109,
+      3008,
+      2062,
+      1883
+    ],
+    "tokens_with_freq_0": 1590,
+    "tokens_with_freq_1": 1319
+  },
+  {
+    "corpus": "corpus_v007 (tok=v004, 4K) ",
+    "vocab_size": 4000,
+    "train_tokens": 80896,
+    "val_tokens": 9216,
+    "test_tokens": 4608,
+    "test_magikarp_exposure_by_threshold": {
+      "0": 0.00390625,
+      "1": 0.013888888888888888,
+      "5": 0.08246527777777778,
+      "10": 0.1644965277777778,
+      "20": 0.2667100694444444,
+      "50": 0.4246961805555556
+    },
+    "val_magikarp_exposure_by_threshold": {
+      "0": 0.004557291666666667,
+      "1": 0.014322916666666666,
+      "5": 0.07584635416666667,
+      "10": 0.1675347222222222,
+      "20": 0.2735460069444444,
+      "50": 0.4268663194444444
+    },
+    "unique_train_tokens": 3674,
+    "unique_train_fraction": 0.9185,
+    "magikarp_pct_at_threshold": {
+      "0": 0.0815,
+      "1": 0.15375,
+      "5": 0.461,
+      "10": 0.6835,
+      "20": 0.83525,
+      "50": 0.93825
+    },
+    "ln_V_uniform_nll": 8.294049640102028,
+    "train_freq_baseline_nll_val": 6.7492346869282285,
+    "train_freq_baseline_nll_test": 6.804662505601888,
+    "val_coverage": {
+      "tokens": 9216,
+      "seen_in_train": 9174,
+      "oov_to_train_pct": 0.004557291666666667
+    },
+    "test_coverage": {
+      "tokens": 4608,
+      "seen_in_train": 4590,
+      "oov_to_train_pct": 0.00390625
+    },
+    "top5_token_ids": [
+      112,
+      15,
+      148,
+      162,
+      17
+    ],
+    "top5_freqs": [
+      4024,
+      2890,
+      2616,
+      1828,
+      1694
+    ],
+    "tokens_with_freq_0": 326,
+    "tokens_with_freq_1": 289
+  }
+]
